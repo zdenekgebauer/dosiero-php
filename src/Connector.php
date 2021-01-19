@@ -72,10 +72,16 @@ class Connector
         $basicAuthUser = $this->config->getBasicAuthUser();
         $basicAuthPassword = $this->config->getBasicAuthPassword();
 
-        if ((!empty($basicAuthUser) || !empty($basicAuthPassword)) && !isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])) {
+        if (
+            (!empty($basicAuthUser) || !empty($basicAuthPassword))
+            && !isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])
+        ) {
             throw new AccessForbiddenException('missing required basic auth');
         }
-        if (isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) && ($_SERVER['PHP_AUTH_USER'] !== $basicAuthUser || $_SERVER['PHP_AUTH_PW'] !== $basicAuthUser)) {
+        if (
+            isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])
+            && ($_SERVER['PHP_AUTH_USER'] !== $basicAuthUser || $_SERVER['PHP_AUTH_PW'] !== $basicAuthUser)
+        ) {
             throw new AccessForbiddenException('invalid basic authentication');
         }
 

@@ -66,6 +66,4 @@ class Config
     {
         return $this->basicAuthPassword;
     }
-
-
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dosiero;
 
 use GdImage;
+
 use function function_exists;
 
 class Thumbnail
@@ -20,12 +21,6 @@ class Thumbnail
     {
         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
         $ext = str_replace('jpeg', 'jpg', $ext);
-
-//        $imgOrig = file_get_contents($file);
-//        if ($imgOrig === false) {
-//            return '';
-//        }
-
         return self::createThumbnailFromString((string)file_get_contents($file), $ext, $maxSize);
     }
 
