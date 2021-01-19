@@ -28,7 +28,8 @@ class LocalStorage extends Storage implements StorageInterface
     public function setOption(string $name, bool | int | string $value): void
     {
         if ($name === self::OPTION_BASE_DIR) {
-            if (!is_dir((string)$value)) {
+            $value = (string)$value;
+            if (!is_dir($value)) {
                 throw new InvalidArgumentException('directory "' . $value . '" not found');
             }
             $this->baseDir = rtrim($value, '/') . '/';

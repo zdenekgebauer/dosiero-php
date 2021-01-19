@@ -21,3 +21,6 @@ jobs:
 
       - name: Static analysis
         run: php build/phpstan.phar analyse -c build/phpstan.neon src
+
+      - name: tests
+        run: vendor/bin/codecept run unit,integration

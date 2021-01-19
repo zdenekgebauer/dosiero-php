@@ -29,23 +29,23 @@ tooling:
   tests:
     service: appserver
     description: all tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run unit,integration,api --html report-unit.html --env local
+    cmd: php vendor/codeception/codeception/codecept run unit,integration,api --html report-tests.html
   tests_unit:
     service: appserver
     description: unit tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run unit --html report-unit.html --env local
+    cmd: php vendor/codeception/codeception/codecept run unit --html report-unit.html
   tests_integration:
     service: appserver
     description: integration tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run integration --html report-unit.html --env local
+    cmd: php vendor/codeception/codeception/codecept run integration --html report-integration.html
   tests_api:
     service: appserver
     description: API tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run api --html report-api.html --env local
+    cmd: php vendor/codeception/codeception/codecept run api --html report-api.html
   coverage:
     service: appserver
     description: code coverage (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run unit,integration --html report-coverage.html --coverage-html --env local
+    cmd: php vendor/codeception/codeception/codecept run unit,integration --html report-coverage.html --coverage-html
 events:
   pre-start:
     - appserver: composer install
