@@ -73,7 +73,6 @@ class LocalStorageFilesTest extends LocalStorageBase
         $itemFolder = reset($itemFolder);
         $this->tester->assertEquals('dir', $itemFolder['type']);
         $this->tester->assertEquals($this->testUrl . 'folder', $itemFolder['url']);
-        $this->tester->assertTrue($itemFolder['size'] === 0 || $itemFolder['size'] === 512); //test in docker returns 512
         $this->tester->assertEquals(
             date('c', filemtime($this->testDirectory . '/folder')),
             $itemFolder['modified']
