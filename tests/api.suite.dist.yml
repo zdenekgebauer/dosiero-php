@@ -1,0 +1,9 @@
+actor: ApiTester
+modules:
+  enabled:
+    - \Helper\Api
+    - Asserts
+    - REST:
+        url: https://dosiero-php.local/
+        depends: PhpBrowser
+        part: Json

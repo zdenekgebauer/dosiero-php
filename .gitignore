@@ -1,0 +1,19 @@
+# generally ignored files
+Thumbs.db
+*.bak
+*.log
+*.log.*
+*.lastrun
+
+.idea/
+# local build settings
+/build/local.properties
+/build/reports/
+/tests/*.suite.yml
+/tests/_envs/local.yml
+/tests/_output/*
+/tests/_support/_generated/*
+/vendor/
+/.lando.local.yml
+/composer.lock
+/index.php

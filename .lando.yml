@@ -1,0 +1,51 @@
+name: dosiero
+services:
+  appserver:
+    type: php:8.0
+    via: apache:2.4
+    ssl: true
+    sslExpose: true
+    webroot: .
+    xdebug: coverage
+    composer_version: 2-latest
+    build_as_root:
+      - docker-php-ext-install sockets
+proxy:
+  appserver:
+    - dosiero-php.local
+tooling:
+  php:
+    service: appserver
+  composer:
+    service: appserver
+  phpcs:
+    service: appserver
+    description: check cocing standards (PHP CodeSniffer)
+    cmd: php build/phpcs.phar --standard=PSR12 --report-file=build/reports/checkstyle.txt src
+  phpstan:
+    service: appserver
+    description: static analysis (PHPStan)
+    cmd: php build/phpstan.phar analyze -c build/phpstan.neon > build/reports/phpstan.txt
+  tests:
+    service: appserver
+    description: all tests (Codeception)
+    cmd: php vendor/codeception/codeception/codecept run unit,integration,api --html report-unit.html --env local
+  tests_unit:
+    service: appserver
+    description: unit tests (Codeception)
+    cmd: php vendor/codeception/codeception/codecept run unit --html report-unit.html --env local
+  tests_integration:
+    service: appserver
+    description: integration tests (Codeception)
+    cmd: php vendor/codeception/codeception/codecept run integration --html report-unit.html --env local
+  tests_api:
+    service: appserver
+    description: API tests (Codeception)
+    cmd: php vendor/codeception/codeception/codecept run api --html report-api.html --env local
+  coverage:
+    service: appserver
+    description: code coverage (Codeception)
+    cmd: php vendor/codeception/codeception/codecept run unit,integration --html report-coverage.html --coverage-html --env local
+events:
+  pre-start:
+    - appserver: composer install
