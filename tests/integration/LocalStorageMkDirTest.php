@@ -14,7 +14,6 @@ class LocalStorageMkDirTest extends LocalStorageBase
         $newFolderName = 'newfolder';
         $newFolderPath = $this->testDirectory . '/'. $newFolderName;
         $_POST['folder'] = $newFolderName;
-//        @rmdir($newFolderPath);
 
         $response = $this->getConnectorDefault()->handleRequest();
         $responseJson = $response->toStdClass();

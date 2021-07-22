@@ -137,5 +137,4 @@ class LocalStorageRenameTest extends LocalStorageBase
             }
         );
     }
-
 }

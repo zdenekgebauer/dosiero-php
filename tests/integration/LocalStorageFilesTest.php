@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Dosiero;
 
-//use Dosiero\Local\Directory;
-
 use Dosiero\Local\LocalDirectory;
 
 class LocalStorageFilesTest extends LocalStorageBase
@@ -60,7 +58,6 @@ class LocalStorageFilesTest extends LocalStorageBase
         $this->tester->assertEmpty($responseJson->msg);
         $this->tester->assertFalse(property_exists($responseJson, 'storages'));
         $files = $responseJson->files;
-
         $this->tester->assertCount(3, $files);
 
         $itemFolder = array_filter(

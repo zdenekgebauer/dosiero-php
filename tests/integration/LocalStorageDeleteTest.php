@@ -8,6 +8,7 @@ use Dosiero\Local\LocalDirectory;
 
 class LocalStorageDeleteTest extends LocalStorageBase
 {
+
     public function testDelete(): void
     {
         $baseDir = $this->testDirectory;

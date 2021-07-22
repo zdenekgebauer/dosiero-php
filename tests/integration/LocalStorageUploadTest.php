@@ -6,6 +6,7 @@ namespace Dosiero;
 
 class LocalStorageUploadTest extends LocalStorageBase
 {
+
     public function testUpload(): void
     {
         $fileName = 'phpunit.jpg';
@@ -53,7 +54,7 @@ class LocalStorageUploadTest extends LocalStorageBase
         $fileName = 'phpunit.jpg';
         $tempFile = sys_get_temp_dir() . '/' . $fileName;
         copy(codecept_data_dir() . '/phpunit.jpg', $tempFile);
-        file_put_contents($this->testDirectory. '/'. $fileName, '');
+        file_put_contents($this->testDirectory . '/' . $fileName, '');
 
         $_FILES = [
             'files' => [
@@ -68,16 +69,6 @@ class LocalStorageUploadTest extends LocalStorageBase
         $_GET['storage'] = self::STORAGE_NAME;
         $_GET['action'] = 'upload';
 
-        //$connector = $this->getConnectorNoOverwrite();
-
-//
-//        $this->tester->expectThrowable(
-////            new StorageException('files were not overwritten: ' . $fileName ),
-//            new \Exception('files were not overwritten: ' . $fileName ),
-//            static function () use ($connector) {
-//                $connector->handleRequest();
-//            }
-//        );
         $response = $this->getConnectorNoOverwrite()->handleRequest();
         $responseJson = $response->toStdClass();
         $this->tester->assertEquals('files were not overwritten: ' . $fileName, $responseJson->msg);
@@ -103,11 +94,9 @@ class LocalStorageUploadTest extends LocalStorageBase
         $_GET['storage'] = self::STORAGE_NAME;
         $_GET['action'] = 'upload';
 
-        $response = $this->getConnectorDefault()->handleRequest();
-        $responseJson = $response->toStdClass();
+        $responseJson = $this->getConnectorDefault()->handleRequest()->toStdClass();
 
         $this->tester->assertEquals('upload "' . $fileName . '" failed', $responseJson->msg);
-
         $this->tester->assertFalse(property_exists($responseJson, 'storages'));
 
         $this->tester->assertFileNotExists($this->testDirectory . '/' . $fileName);
