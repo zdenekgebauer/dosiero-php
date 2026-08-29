@@ -17,3 +17,4 @@ Thumbs.db
 /.lando.local.yml
 /composer.lock
 /index.php
+/data/

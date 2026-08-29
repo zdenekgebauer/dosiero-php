@@ -1,7 +1,7 @@
 name: dosiero
 services:
   appserver:
-    type: php:8.0
+    type: php:8.5
     via: apache:2.4
     ssl: true
     sslExpose: true

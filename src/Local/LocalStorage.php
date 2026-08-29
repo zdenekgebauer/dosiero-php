@@ -76,6 +76,9 @@ class LocalStorage extends Storage implements StorageInterface
         return $files;
     }
 
+    /**
+     * @param string $path absolute path without trailing slash
+     */
     private function absPath(string $path): string
     {
         $path = trim($path, '/');
@@ -107,7 +110,7 @@ class LocalStorage extends Storage implements StorageInterface
                 $fileName = Utils::normalizeFileName($fileName);
             }
 
-            $targetFullPath = $targetDir . $fileName;
+            $targetFullPath = $targetDir . '/' . $fileName;
             if (!$this->overwriteFiles && is_file($targetFullPath)) {
                 $noOverwritten[] = $fileName;
                 continue;
