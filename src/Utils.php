@@ -6,7 +6,6 @@ namespace Dosiero;
 
 class Utils
 {
-
     /**
      * The Windows set, a superset of the POSIX one, so a name accepted here works
      * on either system.
@@ -25,32 +24,7 @@ class Utils
         'LPT0', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
     ];
 
-    /**
-     * Turns an arbitrary name into one that is safe on every supported system.
-     */
-    public static function normalizeFileName(string $fileName): string
-    {
-        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $baseName = $extension === ''
-            ? $fileName
-            : substr($fileName, 0, -(strlen($extension) + 1));
-
-        $baseName = self::normalizePart($baseName);
-        $extension = self::normalizePart($extension);
-
-        if ($baseName === '') {
-            $baseName = 'file';
-        }
-        if (self::isReservedName($baseName)) {
-            $baseName .= '-file';
-        }
-
-        return $extension === '' ? $baseName : $baseName . '.' . $extension;
-    }
-
-    /**
-     * True when the name can be stored as it is on every supported system.
-     */
+    /** True when the name can be stored as it is on every supported system. */
     public static function isValidFileName(string $fileName): bool
     {
         if ($fileName === '' || $fileName === '.' || $fileName === '..') {
@@ -78,6 +52,32 @@ class Utils
         return self::isValidFileName($folder);
     }
 
+    /** Turns an arbitrary name into one that is safe on every supported system. */
+    public static function normalizeFileName(string $fileName): string
+    {
+        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $baseName = $extension === ''
+            ? $fileName
+            : substr($fileName, 0, -(strlen($extension) + 1));
+
+        $baseName = self::normalizePart($baseName);
+        $extension = self::normalizePart($extension);
+
+        if ($baseName === '') {
+            $baseName = 'file';
+        }
+        if (self::isReservedName($baseName)) {
+            $baseName .= '-file';
+        }
+
+        return $extension === '' ? $baseName : $baseName . '.' . $extension;
+    }
+
+    private static function isReservedName(string $baseName): bool
+    {
+        return in_array(strtoupper($baseName), self::RESERVED_NAMES, true);
+    }
+
     private static function normalizePart(string $part): string
     {
         $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT', $part);
@@ -93,10 +93,5 @@ class Utils
         $part = (string)preg_replace('/[\s-]+/', '-', $part);
 
         return trim($part, '-. ');
-    }
-
-    private static function isReservedName(string $baseName): bool
-    {
-        return in_array(strtoupper($baseName), self::RESERVED_NAMES, true);
     }
 }

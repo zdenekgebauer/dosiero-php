@@ -6,31 +6,28 @@ namespace Dosiero;
 
 class File implements FileInterface
 {
+    public const TYPE_DIR = 'dir';
 
     public const TYPE_FILE = 'file';
 
-    public const TYPE_DIR = 'dir';
-
     public const TYPE_LINK = 'link';
 
-    protected string $name;
-
-    /**
-     * @var string dir|file|link
-     */
-    protected string $type;
-
-    private int $size = 0;
-
-    protected string $modified = '';
-
-    protected ?int $width;
+    protected string $directoryUrl = '';
 
     protected ?int $height;
 
+    protected string $modified = '';
+
+    protected string $name;
+
     protected ?string $thumbnail;
 
-    protected string $directoryUrl = '';
+    /** @var string dir|file|link */
+    protected string $type;
+
+    protected ?int $width;
+
+    private int $size = 0;
 
     public function __construct(string $name, string $type)
     {
@@ -38,29 +35,9 @@ class File implements FileInterface
         $this->type = $type;
     }
 
-    public function getName(): string
+    public function getHeight(): ?int
     {
-        return $this->name;
-    }
-
-    public function getType(): string
-    {
-        return $this->type;
-    }
-
-    public function setSize(int $size): void
-    {
-        $this->size = $size;
-    }
-
-    public function getSize(): int
-    {
-        return $this->size;
-    }
-
-    public function setModified(string $modified): void
-    {
-        $this->modified = $modified;
+        return $this->height;
     }
 
     public function getModified(): ?string
@@ -68,29 +45,14 @@ class File implements FileInterface
         return $this->modified;
     }
 
-    public function setWidth(?int $width): void
+    public function getName(): string
     {
-        $this->width = $width;
+        return $this->name;
     }
 
-    public function getWidth(): ?int
+    public function getSize(): int
     {
-        return $this->width;
-    }
-
-    public function getHeight(): ?int
-    {
-        return $this->height;
-    }
-
-    public function setHeight(?int $height): void
-    {
-        $this->height = $height;
-    }
-
-    public function setThumbnail(?string $thumbnail): void
-    {
-        $this->thumbnail = $thumbnail;
+        return $this->size;
     }
 
     public function getThumbnail(): ?string
@@ -98,13 +60,48 @@ class File implements FileInterface
         return $this->thumbnail;
     }
 
-    public function setDirectoryUrl(string $directoryUrl): void
+    public function getType(): string
     {
-        $this->directoryUrl = $directoryUrl;
+        return $this->type;
     }
 
     public function getUrl(): string
     {
         return $this->directoryUrl . $this->name;
+    }
+
+    public function getWidth(): ?int
+    {
+        return $this->width;
+    }
+
+    public function setDirectoryUrl(string $directoryUrl): void
+    {
+        $this->directoryUrl = $directoryUrl;
+    }
+
+    public function setHeight(?int $height): void
+    {
+        $this->height = $height;
+    }
+
+    public function setModified(string $modified): void
+    {
+        $this->modified = $modified;
+    }
+
+    public function setSize(int $size): void
+    {
+        $this->size = $size;
+    }
+
+    public function setThumbnail(?string $thumbnail): void
+    {
+        $this->thumbnail = $thumbnail;
+    }
+
+    public function setWidth(?int $width): void
+    {
+        $this->width = $width;
     }
 }

@@ -4,36 +4,26 @@ declare(strict_types=1);
 
 namespace Dosiero;
 
-use InvalidArgumentException;
-use stdClass;
-
 class Response
 {
+    public const STATUS_BAD_REQUEST = 400;
 
     public const STATUS_OK = 200;
 
-    public const STATUS_BAD_REQUEST = 400;
+    private string $allowDomain = '';
+
+    /** @var iterable<FileInterface>|null */
+    private $files;
 
     private int $httpStatus;
 
     private string $message;
 
-    /**
-     * @var iterable<FileInterface>|null
-     */
-    private $files;
-
-    /**
-     * @var StorageInterface[]
-     */
-    private $storages = [];
-
-    /**
-     * @var StorageInterface
-     */
+    /** @var StorageInterface */
     private $storage;
 
-    private string $allowDomain = '';
+    /** @var StorageInterface[] */
+    private $storages = [];
 
     public function __construct(int $httpStatus = self::STATUS_OK, string $message = '')
     {
@@ -41,20 +31,33 @@ class Response
         $this->message = $message;
     }
 
-    /**
-     * @param iterable<FileInterface> $files
-     */
+    /** @param string $domain including protocol or * */
+    public function allowAccessFromDomain(string $domain): void
+    {
+        if ($domain !== '*' && strncmp($domain, 'http', 4) !== 0) {
+            throw new \InvalidArgumentException('expected domain including protocol or *');
+        }
+        $this->allowDomain = $domain;
+    }
+
+    public function sendOutput(): void
+    {
+        if ($this->allowDomain === '*') {
+            header('Access-Control-Allow-Origin: *');
+        }
+        if ($this->allowDomain !== '') {
+            header('Access-Control-Allow-Origin: ' . $this->allowDomain);
+            header('Vary: Origin');
+        }
+        header('Content-type: application/json; charset=utf-8');
+        http_response_code($this->httpStatus);
+        echo json_encode($this->toStdClass(), JSON_THROW_ON_ERROR);
+    }
+
+    /** @param iterable<FileInterface> $files */
     public function setFiles(iterable $files): void
     {
         $this->files = $files;
-    }
-
-    /**
-     * @param StorageInterface[] $storages
-     */
-    public function setStorages(array $storages): void
-    {
-        $this->storages = $storages;
     }
 
     public function setStorage(StorageInterface $storage): void
@@ -62,44 +65,33 @@ class Response
         $this->storage = $storage;
     }
 
-    public function toStdClass(): stdClass
+    /** @param StorageInterface[] $storages */
+    public function setStorages(array $storages): void
     {
-        $result = new stdClass();
+        $this->storages = $storages;
+    }
+
+    public function toStdClass(): \stdClass
+    {
+        $result = new \stdClass();
         $result->msg = $this->message;
         if ($this->files !== null) {
             $result->files = self::filesToStdClass($this->files);
         }
         if ($this->storage !== null) {
-            $result->storage = new stdClass();
+            $result->storage = new \stdClass();
             $result->storage->name = $this->storage->getName();
             $result->storage->read_only = $this->storage->isReadOnly();
             $result->storage->folders = self::foldersToStdClass($this->storage->getFolders());
         }
         if ($this->storages) {
             foreach ($this->storages as $storage) {
-                $item = new stdClass();
+                $item = new \stdClass();
                 $item->name = $storage->getName();
                 $item->read_only = $storage->isReadOnly();
                 $item->folders = self::foldersToStdClass($storage->getFolders());
                 $result->storages[] = $item;
             }
-        }
-        return $result;
-    }
-
-    /**
-     * @param FolderInterface[] $folders
-     * @return array
-     */
-    private static function foldersToStdClass(iterable $folders): iterable
-    {
-        $result = [];
-        foreach ($folders as $folder) {
-            $result[] = [
-                'name' => $folder->getName(),
-                'path' => $folder->getPath(),
-                'folders' => self::foldersToStdClass($folder->getFolders()),
-            ];
         }
         return $result;
     }
@@ -127,27 +119,19 @@ class Response
     }
 
     /**
-     * @param string $domain including protocol or *
+     * @param FolderInterface[] $folders
+     * @return array
      */
-    public function allowAccessFromDomain(string $domain): void
+    private static function foldersToStdClass(iterable $folders): iterable
     {
-        if ($domain !== '*' && strncmp($domain, 'http', 4) !== 0) {
-            throw new InvalidArgumentException('expected domain including protocol or *');
+        $result = [];
+        foreach ($folders as $folder) {
+            $result[] = [
+                'name' => $folder->getName(),
+                'path' => $folder->getPath(),
+                'folders' => self::foldersToStdClass($folder->getFolders()),
+            ];
         }
-        $this->allowDomain = $domain;
-    }
-
-    public function sendOutput(): void
-    {
-        if ($this->allowDomain === '*') {
-            header('Access-Control-Allow-Origin: *');
-        }
-        if ($this->allowDomain !== '') {
-            header('Access-Control-Allow-Origin: ' . $this->allowDomain);
-            header('Vary: Origin');
-        }
-        header('Content-type: application/json; charset=utf-8');
-        http_response_code($this->httpStatus);
-        echo json_encode($this->toStdClass(), JSON_THROW_ON_ERROR);
+        return $result;
     }
 }

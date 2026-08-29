@@ -4,65 +4,43 @@ declare(strict_types=1);
 
 namespace Dosiero\Local;
 
-use DirectoryIterator;
 use Dosiero\Folder;
 use Dosiero\FolderInterface;
 use Dosiero\Storage;
 use Dosiero\StorageException;
 use Dosiero\StorageInterface;
-use Dosiero\UploadException;
 use Dosiero\Utils;
-use InvalidArgumentException;
-use RuntimeException;
 
 class LocalStorage extends Storage implements StorageInterface
 {
-
     public const OPTION_BASE_DIR = 'BASE_DIR';
 
-    /**
-     * @var string include trailing slash
-     */
+    /** @var string include trailing slash */
     private string $baseDir = '';
 
-    public function setOption(string $name, bool | int | string $value): void
+    public function copy(string $path, array $files, string $targetPath, bool &$copiedFolder): void
     {
-        if ($name === self::OPTION_BASE_DIR) {
-            $value = (string)$value;
-            if (!is_dir($value)) {
-                throw new InvalidArgumentException('directory "' . $value . '" not found');
-            }
-            $this->baseDir = rtrim($value, '/') . '/';
-        } else {
-            parent::setOption($name, $value);
-        }
-    }
+        $sourceDir = $this->absPath($path);
+        $targetDir = $this->absPath($targetPath);
 
-    public function getFolders(): iterable
-    {
-        return $this->getSubFolders($this->baseDir);
-    }
-
-    /**
-     * recursive function, returns folders in given directory
-     * @param string $dir
-     * @return iterable<FolderInterface>
-     */
-    private function getSubFolders(string $dir): iterable
-    {
-        $result = [];
-
-        $iterator = new DirectoryIterator($dir);
-        foreach ($iterator as $fileInfo) {
-            if ($fileInfo->isDir() && !$fileInfo->isDot()) {
-                $path = str_replace([$this->baseDir, '\\'], ['', '/'], $fileInfo->getPathname());
-                $path = trim($path, '/');
-
-                $item = new Folder($fileInfo->getBasename(), $path, $this->getSubFolders($fileInfo->getPathname()));
-                $result[] = $item;
+        foreach ($files as $file) {
+            $sourceFullPath = $sourceDir . '/' . $file;
+            if (is_dir($sourceFullPath)) {
+                $this->recursiveCopy($sourceFullPath, $targetDir . '/' . $file);
+                $copiedFolder = true;
+            } elseif (is_file($sourceFullPath)) {
+                copy($sourceFullPath, $targetDir . '/' . $file);
+            } else {
+                throw new StorageException('cannot copy "' . $file . '"');
             }
         }
-        return $result;
+        new LocalDirectory($targetDir, true, $this->thumbnailSize);
+    }
+
+    public function delete(string $path, array $files, bool &$deletedFolder): void
+    {
+        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize);
+        $directory->deleteFiles($files, $deletedFolder);
     }
 
     public function getFiles(string $path, bool $ignoreCache = false): iterable
@@ -76,30 +54,9 @@ class LocalStorage extends Storage implements StorageInterface
         return $files;
     }
 
-    /**
-     * Canonicalizes both sides with realpath() before comparing, so "..", an
-     * absolute path or a symlink cannot escape the storage.
-     *
-     * @param string $path absolute path without trailing slash
-     */
-    private function absPath(string $path): string
+    public function getFolders(): iterable
     {
-        $baseDir = realpath($this->baseDir);
-        $fullPath = realpath($this->baseDir . trim($path, '/'));
-
-        if ($baseDir === false || $fullPath === false || !self::isInsideBaseDir($fullPath, $baseDir)) {
-            throw new StorageException('not found path "' . $path . '"');
-        }
-
-        return $fullPath;
-    }
-
-    /**
-     * Both arguments must already be canonicalized by realpath().
-     */
-    private static function isInsideBaseDir(string $path, string $baseDir): bool
-    {
-        return $path === $baseDir || str_starts_with($path, $baseDir . DIRECTORY_SEPARATOR);
+        return $this->getSubFolders($this->baseDir);
     }
 
     public function mkDir(string $path, string $newFolder): void
@@ -107,6 +64,44 @@ class LocalStorage extends Storage implements StorageInterface
         $targetDir = $this->absPath($path);
         $directory = new LocalDirectory($targetDir, false, $this->thumbnailSize);
         $directory->mkDir($newFolder, $this->modeDir);
+    }
+
+    public function move(string $path, array $files, string $targetPath, bool &$movedFolder): void
+    {
+        $sourceDir = $this->absPath($path);
+        $targetDir = $this->absPath($targetPath);
+
+        foreach ($files as $file) {
+            $sourceFullPath = $sourceDir . '/' . $file;
+            if (is_dir($sourceFullPath)) {
+                $this->recursiveMove($sourceFullPath, $targetDir . '/' . $file);
+                $movedFolder = true;
+            } elseif (is_file($sourceFullPath)) {
+                rename($sourceFullPath, $targetDir . '/' . $file);
+            } else {
+                throw new StorageException('cannot move "' . $file . '"');
+            }
+        }
+        new LocalDirectory($targetDir, true, $this->thumbnailSize);
+    }
+
+    public function rename(string $path, string $oldName, string $newName, bool &$renamedFolder): void
+    {
+        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize);
+        $directory->rename($oldName, $newName, $renamedFolder);
+    }
+
+    public function setOption(string $name, bool | int | string $value): void
+    {
+        if ($name === self::OPTION_BASE_DIR) {
+            $value = (string)$value;
+            if (!is_dir($value)) {
+                throw new \InvalidArgumentException('directory "' . $value . '" not found');
+            }
+            $this->baseDir = rtrim($value, '/') . '/';
+        } else {
+            parent::setOption($name, $value);
+        }
     }
 
     public function upload(string $path, array $files): void
@@ -142,44 +137,60 @@ class LocalStorage extends Storage implements StorageInterface
         }
     }
 
-    public function delete(string $path, array $files, bool &$deletedFolder): void
+    /**
+     * Canonicalizes both sides with realpath() before comparing, so "..", an
+     * absolute path or a symlink cannot escape the storage.
+     *
+     * @param string $path absolute path without trailing slash
+     */
+    private function absPath(string $path): string
     {
-        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize);
-        $directory->deleteFiles($files, $deletedFolder);
+        $baseDir = realpath($this->baseDir);
+        $fullPath = realpath($this->baseDir . trim($path, '/'));
+
+        if ($baseDir === false || $fullPath === false || !self::isInsideBaseDir($fullPath, $baseDir)) {
+            throw new StorageException('not found path "' . $path . '"');
+        }
+
+        return $fullPath;
     }
 
-    public function rename(string $path, string $oldName, string $newName, bool &$renamedFolder): void
+    /**
+     * recursive function, returns folders in given directory
+     *
+     * @param string $dir
+     * @return iterable<FolderInterface>
+     */
+    private function getSubFolders(string $dir): iterable
     {
-        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize);
-        $directory->rename($oldName, $newName, $renamedFolder);
-    }
+        $result = [];
 
-    public function copy(string $path, array $files, string $targetPath, bool &$copiedFolder): void
-    {
-        $sourceDir = $this->absPath($path);
-        $targetDir = $this->absPath($targetPath);
+        $iterator = new \DirectoryIterator($dir);
+        foreach ($iterator as $fileInfo) {
+            if ($fileInfo->isDir() && !$fileInfo->isDot()) {
+                $path = str_replace([$this->baseDir, '\\'], ['', '/'], $fileInfo->getPathname());
+                $path = trim($path, '/');
 
-        foreach ($files as $file) {
-            $sourceFullPath = $sourceDir . '/' . $file;
-            if (is_dir($sourceFullPath)) {
-                $this->recursiveCopy($sourceFullPath, $targetDir . '/' . $file);
-                $copiedFolder = true;
-            } elseif (is_file($sourceFullPath)) {
-                copy($sourceFullPath, $targetDir . '/' . $file);
-            } else {
-                throw new StorageException('cannot copy "' . $file . '"');
+                $item = new Folder($fileInfo->getBasename(), $path, $this->getSubFolders($fileInfo->getPathname()));
+                $result[] = $item;
             }
         }
-        new LocalDirectory($targetDir, true, $this->thumbnailSize);
+        return $result;
+    }
+
+    /** Both arguments must already be canonicalized by realpath(). */
+    private static function isInsideBaseDir(string $path, string $baseDir): bool
+    {
+        return $path === $baseDir || str_starts_with($path, $baseDir . DIRECTORY_SEPARATOR);
     }
 
     private function recursiveCopy(string $sourceDir, string $targetDir): void
     {
         if (!is_dir($targetDir) && !mkdir($targetDir, $this->modeDir) && !is_dir($targetDir)) {
-            throw new RuntimeException('Directory "' . $targetDir . '" was not created');
+            throw new \RuntimeException('Directory "' . $targetDir . '" was not created');
         }
 
-        $iterator = new DirectoryIterator($sourceDir);
+        $iterator = new \DirectoryIterator($sourceDir);
         foreach ($iterator as $fileInfo) {
             if ($fileInfo->isFile()) {
                 copy((string)$fileInfo->getRealPath(), $targetDir . '/' . $fileInfo->getFilename());
@@ -189,32 +200,13 @@ class LocalStorage extends Storage implements StorageInterface
         }
     }
 
-    public function move(string $path, array $files, string $targetPath, bool &$movedFolder): void
-    {
-        $sourceDir = $this->absPath($path);
-        $targetDir = $this->absPath($targetPath);
-
-        foreach ($files as $file) {
-            $sourceFullPath = $sourceDir . '/' . $file;
-            if (is_dir($sourceFullPath)) {
-                $this->recursiveMove($sourceFullPath, $targetDir . '/' . $file);
-                $movedFolder = true;
-            } elseif (is_file($sourceFullPath)) {
-                rename($sourceFullPath, $targetDir . '/' . $file);
-            } else {
-                throw new StorageException('cannot move "' . $file . '"');
-            }
-        }
-        new LocalDirectory($targetDir, true, $this->thumbnailSize);
-    }
-
     private function recursiveMove(string $sourceDir, string $targetDir): void
     {
         if (!is_dir($targetDir) && !mkdir($targetDir, $this->modeDir) && !is_dir($targetDir)) {
-            throw new RuntimeException('Directory "' . $targetDir . '" was not created');
+            throw new \RuntimeException('Directory "' . $targetDir . '" was not created');
         }
 
-        $iterator = new DirectoryIterator($sourceDir);
+        $iterator = new \DirectoryIterator($sourceDir);
         foreach ($iterator as $fileInfo) {
             if ($fileInfo->isFile()) {
                 rename((string)$fileInfo->getRealPath(), $targetDir . '/' . $fileInfo->getFilename());

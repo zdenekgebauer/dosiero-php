@@ -4,30 +4,23 @@ declare(strict_types=1);
 
 namespace Dosiero\Local;
 
-use DateTimeImmutable;
-use DirectoryIterator;
 use Dosiero\File;
 use Dosiero\FileInterface;
 use Dosiero\StorageException;
 use Dosiero\Thumbnail;
-use JsonException;
-use SplFileInfo;
 
 use function is_array;
 
 class LocalDirectory
 {
-
     private const CACHE_FILE = '.htdircache';
 
-    private string $folder;
+    private string $cacheFile;
 
-    /**
-     * @var array<FileInterface>
-     */
+    /** @var array<FileInterface> */
     private array $files;
 
-    private string $cacheFile;
+    private string $folder;
 
     private int $thumbnailSize;
 
@@ -47,8 +40,33 @@ class LocalDirectory
         }
     }
 
+    public function deleteFiles(array $files, bool &$deletedFolder): void
+    {
+        $deleted = false;
+        foreach ($files as $file) {
+            $fullPath = $this->folder . $file;
+            if (is_dir($fullPath)) {
+                $this->rmdirRecursive($fullPath);
+                $deletedFolder = true;
+                unset($this->files[basename($fullPath)]);
+                $deleted = true;
+            } else {
+                /* @noinspection PhpUsageOfSilenceOperatorInspection */
+                if (!@unlink($fullPath)) {
+                    throw new StorageException('cannot delete "' . $file . '"');
+                }
+                unset($this->files[basename($fullPath)]);
+                $deleted = true;
+            }
+        }
+        if ($deleted) {
+            $this->saveFilesToCache();
+        }
+    }
+
     /**
      * returns array of files and subfolders in folder
+     *
      * @return iterable<FileInterface>
      */
     public function getFiles(): iterable
@@ -56,25 +74,42 @@ class LocalDirectory
         return $this->files;
     }
 
-    /**
-     * refresh cache with  content
-     */
-    private function loadFiles(): void
+    public function mkDir(string $newFolder, int $mode): void
     {
-        clearstatcache();
-        $this->files = [];
-        foreach (new DirectoryIterator($this->folder) as $fileInfo) {
-            if ($fileInfo->isDot() || $fileInfo->getBasename() === self::CACHE_FILE) {
-                continue;
-            }
-            $this->loadFile((string)$fileInfo->getRealPath());
+        $fullPath = $this->folder . $newFolder;
+        if (is_dir($fullPath)) {
+            return;
+        }
+
+        /* @noinspection MkdirRaceConditionInspection */
+        if (mkdir($fullPath, $mode)) {
+            $this->loadFile($fullPath);
+            $this->saveFilesToCache();
+        } else {
+            throw new StorageException('cannot create folder "' . $newFolder . '"');
+        }
+    }
+
+    public function rename(string $oldName, string $newName, bool &$renamedFolder): void
+    {
+        $oldFullPath = $this->folder . $oldName;
+        $newFullPath = $this->folder . $newName;
+
+        /* @noinspection PhpUsageOfSilenceOperatorInspection */
+        if (@rename($oldFullPath, $newFullPath)) {
+            $renamedFolder = is_dir($newFullPath);
+            unset($this->files[$oldName]);
+            $this->loadFile($newFullPath);
+            $this->saveFilesToCache();
+        } else {
+            throw new StorageException('cannot rename "' . $oldName . '" to "' . $newName . '"');
         }
     }
 
     private function loadFile(string $realPath): void
     {
-        $fileInfo = new SplFileInfo($realPath);
-        $modified = new DateTimeImmutable('@' . $fileInfo->getMTime());
+        $fileInfo = new \SplFileInfo($realPath);
+        $modified = new \DateTimeImmutable('@' . $fileInfo->getMTime());
         $imageWidth = null;
         $imageHeight = null;
         $thumbnail = null;
@@ -100,30 +135,24 @@ class LocalDirectory
         $this->files[$file->getName()] = $file;
     }
 
-    private function saveFilesToCache(): void
+    /** refresh cache with  content */
+    private function loadFiles(): void
     {
-        $cache = [];
-        foreach ($this->files as $file) {
-            $fileName = $file->getName();
-            $cache[$fileName] = [
-                'name' => $fileName,
-                'type' => $file->getType(),
-                'size' => $file->getSize(),
-                'modified' => $file->getModified(),
-                'width' => $file->getWidth(),
-                'height' => $file->getHeight(),
-                'thumbnail' => $file->getThumbnail(),
-            ];
+        clearstatcache();
+        $this->files = [];
+        foreach (new \DirectoryIterator($this->folder) as $fileInfo) {
+            if ($fileInfo->isDot() || $fileInfo->getBasename() === self::CACHE_FILE) {
+                continue;
+            }
+            $this->loadFile((string)$fileInfo->getRealPath());
         }
-        ksort($cache);
-        file_put_contents($this->cacheFile, json_encode($cache, JSON_THROW_ON_ERROR));
     }
 
     private function loadFilesFromCache(): bool
     {
         try {
             $cache = json_decode((string)file_get_contents($this->cacheFile), true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
+        } catch (\JsonException $exception) {
             return false;
         }
         $this->files = [];
@@ -137,30 +166,6 @@ class LocalDirectory
             $this->files[$file->getName()] = $file;
         }
         return true;
-    }
-
-    public function deleteFiles(array $files, bool &$deletedFolder): void
-    {
-        $deleted = false;
-        foreach ($files as $file) {
-            $fullPath = $this->folder . $file;
-            if (is_dir($fullPath)) {
-                $this->rmdirRecursive($fullPath);
-                $deletedFolder = true;
-                unset($this->files[basename($fullPath)]);
-                $deleted = true;
-            } else {
-                /** @noinspection PhpUsageOfSilenceOperatorInspection */
-                if (!@unlink($fullPath)) {
-                    throw new StorageException('cannot delete "' . $file . '"');
-                }
-                unset($this->files[basename($fullPath)]);
-                $deleted = true;
-            }
-        }
-        if ($deleted) {
-            $this->saveFilesToCache();
-        }
     }
 
     private function rmdirRecursive(string $path): void
@@ -184,35 +189,22 @@ class LocalDirectory
         }
     }
 
-    public function mkDir(string $newFolder, int $mode): void
+    private function saveFilesToCache(): void
     {
-        $fullPath = $this->folder . $newFolder;
-        if (is_dir($fullPath)) {
-            return;
+        $cache = [];
+        foreach ($this->files as $file) {
+            $fileName = $file->getName();
+            $cache[$fileName] = [
+                'name' => $fileName,
+                'type' => $file->getType(),
+                'size' => $file->getSize(),
+                'modified' => $file->getModified(),
+                'width' => $file->getWidth(),
+                'height' => $file->getHeight(),
+                'thumbnail' => $file->getThumbnail(),
+            ];
         }
-
-        /** @noinspection MkdirRaceConditionInspection */
-        if (mkdir($fullPath, $mode)) {
-            $this->loadFile($fullPath);
-            $this->saveFilesToCache();
-        } else {
-            throw new StorageException('cannot create folder "' . $newFolder . '"');
-        }
-    }
-
-    public function rename(string $oldName, string $newName, bool &$renamedFolder): void
-    {
-        $oldFullPath = $this->folder . $oldName;
-        $newFullPath = $this->folder . $newName;
-
-        /** @noinspection PhpUsageOfSilenceOperatorInspection */
-        if (@rename($oldFullPath, $newFullPath)) {
-            $renamedFolder = is_dir($newFullPath);
-            unset($this->files[$oldName]);
-            $this->loadFile($newFullPath);
-            $this->saveFilesToCache();
-        } else {
-            throw new StorageException('cannot rename "' . $oldName . '" to "' . $newName . '"');
-        }
+        ksort($cache);
+        file_put_contents($this->cacheFile, json_encode($cache, JSON_THROW_ON_ERROR));
     }
 }

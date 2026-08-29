@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Dosiero;
 
-use GdImage;
-
 use function function_exists;
 
 class Thumbnail
 {
-
     /**
      * returns thumbnail as base64 data uri
+     *
      * @param string $file
      * @param int $maxSize
      * @return string
@@ -22,18 +20,6 @@ class Thumbnail
         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
         $ext = str_replace('jpeg', 'jpg', $ext);
         return self::createThumbnailFromString((string)file_get_contents($file), $ext, $maxSize);
-    }
-
-    private static function imageToData(GdImage $image, string $ext): string
-    {
-        $imageFunction = 'image' . str_replace('jpg', 'jpeg', $ext);
-        if (!function_exists($imageFunction)) {
-            return '';
-        }
-        ob_start();
-        /** @var callable $imageFunction */
-        $imageFunction($image);
-        return (string)ob_get_clean();
     }
 
     public static function createThumbnailFromString(string $image, string $ext, int $maxSize = 50): string
@@ -84,7 +70,7 @@ class Thumbnail
                     $imgThumb,
                     $transparentColor['red'],
                     $transparentColor['green'],
-                    $transparentColor['blue']
+                    $transparentColor['blue'],
                 );
                 // fill the background of the new image with allocated color
                 imagefill($imgThumb, 0, 0, $transparentIndex);
@@ -114,7 +100,7 @@ class Thumbnail
             $thumbWidth,
             $thumbHeight,
             $origWidth,
-            $origHeight
+            $origHeight,
         );
 
         $imageData = self::imageToData($imgThumb, $ext);
@@ -129,5 +115,17 @@ class Thumbnail
         $mime = $mimes[$ext] ?? 'image/jpg';
 
         return $imageData === '' ? '' : 'data:' . $mime . ';base64,' . base64_encode($imageData);
+    }
+
+    private static function imageToData(\GdImage $image, string $ext): string
+    {
+        $imageFunction = 'image' . str_replace('jpg', 'jpeg', $ext);
+        if (!function_exists($imageFunction)) {
+            return '';
+        }
+        ob_start();
+        /** @var callable $imageFunction */
+        $imageFunction($image);
+        return (string)ob_get_clean();
     }
 }

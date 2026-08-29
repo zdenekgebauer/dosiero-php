@@ -13,12 +13,10 @@ interface FolderInterface
      */
     public function __construct(string $name, string $path, iterable $folders);
 
+    /** @return iterable<FolderInterface> */
+    public function getFolders(): iterable;
+
     public function getName(): string;
 
     public function getPath(): string;
-
-    /**
-     * @return iterable<FolderInterface>
-     */
-    public function getFolders(): iterable;
 }

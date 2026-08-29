@@ -8,21 +8,14 @@ use function is_array;
 
 class Request
 {
+    /** @var string */
+    private $action;
 
-    /**
-     * @var string
-     */
-    private $storage;
-
-    /**
-     * @var string
-     */
+    /** @var string */
     private $path;
 
-    /**
-     * @var string
-     */
-    private $action;
+    /** @var string */
+    private $storage;
 
     public function __construct()
     {
@@ -36,9 +29,19 @@ class Request
         return $this->action;
     }
 
-    public function getStorage(): string
+    public function getNewFile(): string
     {
-        return $this->storage;
+        return self::assertNewName(trim($_POST['new'] ?? ''));
+    }
+
+    public function getNewFolder(): string
+    {
+        return self::assertNewName(trim($_POST['folder'] ?? ''));
+    }
+
+    public function getOldFile(): string
+    {
+        return self::assertPlainName(trim($_POST['old'] ?? ''));
     }
 
     public function getPath(): string
@@ -54,9 +57,34 @@ class Request
         return array_map([self::class, 'assertPlainName'], array_map('\strval', $_POST['files']));
     }
 
-    public function getNewFolder(): string
+    public function getStorage(): string
     {
-        return self::assertNewName(trim($_POST['folder'] ?? ''));
+        return $this->storage;
+    }
+
+    public function getTargetPath(): string
+    {
+        return trim($_POST['target_path'] ?? '');
+    }
+
+    public function getTargetStorage(): string
+    {
+        return trim($_POST['target_storage'] ?? '');
+    }
+
+    public function getUploadedFiles(): array
+    {
+        return $_FILES ?? [];
+    }
+
+    /** For names being created: additionally has to be storable on every supported system. */
+    private static function assertNewName(string $name): string
+    {
+        self::assertPlainName($name);
+        if (!Utils::isValidFileName($name)) {
+            throw new InvalidRequestException('name "' . $name . '" contains characters that are not allowed');
+        }
+        return $name;
     }
 
     /**
@@ -76,42 +104,5 @@ class Request
             throw new InvalidRequestException('invalid name "' . $name . '"');
         }
         return $name;
-    }
-
-    /**
-     * For names being created: additionally has to be storable on every supported system.
-     */
-    private static function assertNewName(string $name): string
-    {
-        self::assertPlainName($name);
-        if (!Utils::isValidFileName($name)) {
-            throw new InvalidRequestException('name "' . $name . '" contains characters that are not allowed');
-        }
-        return $name;
-    }
-
-    public function getTargetStorage(): string
-    {
-        return trim($_POST['target_storage'] ?? '');
-    }
-
-    public function getTargetPath(): string
-    {
-        return trim($_POST['target_path'] ?? '');
-    }
-
-    public function getUploadedFiles(): array
-    {
-        return $_FILES ?? [];
-    }
-
-    public function getOldFile(): string
-    {
-        return self::assertPlainName(trim($_POST['old'] ?? ''));
-    }
-
-    public function getNewFile(): string
-    {
-        return self::assertNewName(trim($_POST['new'] ?? ''));
     }
 }

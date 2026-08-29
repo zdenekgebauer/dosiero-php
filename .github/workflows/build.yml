@@ -36,7 +36,5 @@ jobs:
       - name: Static analysis (PHPStan)
         run: vendor/bin/phpstan analyze -c build/phpstan.neon --no-progress --error-format=raw
 
-      # suite names become Unit,Integration when the Codeception 5 upgrade
-      # renames the directories
       - name: Tests
-        run: vendor/bin/codecept run unit,integration
+        run: vendor/bin/codecept run Unit,Integration

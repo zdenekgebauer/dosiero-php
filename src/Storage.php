@@ -4,33 +4,17 @@ declare(strict_types=1);
 
 namespace Dosiero;
 
-use InvalidArgumentException;
-
 abstract class Storage
 {
+    /** Comma separated list of extensions accepted by upload, e.g. 'jpg,png,pdf'. */
+    public const OPTION_ALLOWED_EXTENSIONS = 'ALLOWED_EXTENSIONS';
     public const OPTION_BASE_URL = 'BASE_URL';
-    public const OPTION_THUMBNAIL_SIZE = 'THUMBNAIL_SIZE';
-    public const OPTION_MODE_FILE = 'MODE_FILE';
     public const OPTION_MODE_DIRECTORY = 'MODE_DIRECTORY';
-    public const OPTION_READ_ONLY = 'READ_ONLY';
+    public const OPTION_MODE_FILE = 'MODE_FILE';
     public const OPTION_NORMALIZE_NAMES = 'NORMALIZE_NAMES';
     public const OPTION_OVERWRITE_FILES = 'OVERWRITE_FILES';
-
-    /**
-     * Comma separated list of extensions accepted by upload, e.g. 'jpg,png,pdf'.
-     */
-    public const OPTION_ALLOWED_EXTENSIONS = 'ALLOWED_EXTENSIONS';
-
-    /**
-     * Refused in any position of the name, so "invoice.php.jpg" is rejected too.
-     *
-     * @var array<string>
-     */
-    private const EXECUTABLE_EXTENSIONS = [
-        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'pht', 'phtml', 'phar',
-        'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'asp', 'aspx', 'jsp', 'jspx', 'exe', 'dll',
-        'htaccess', 'htpasswd', 'user', 'ini', 'conf',
-    ];
+    public const OPTION_READ_ONLY = 'READ_ONLY';
+    public const OPTION_THUMBNAIL_SIZE = 'THUMBNAIL_SIZE';
 
     /**
      * SVG is left out on purpose - it can carry script and is served from the same
@@ -47,30 +31,37 @@ abstract class Storage
     ];
 
     /**
+     * Refused in any position of the name, so "invoice.php.jpg" is rejected too.
+     *
      * @var array<string>
      */
+    private const EXECUTABLE_EXTENSIONS = [
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'pht', 'phtml', 'phar',
+        'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'asp', 'aspx', 'jsp', 'jspx', 'exe', 'dll',
+        'htaccess', 'htpasswd', 'user', 'ini', 'conf',
+    ];
+
+    /** @var array<string> */
     private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'ico'];
 
-    protected string $name;
+    /** @var array<string> */
+    protected array $allowedExtensions = self::DEFAULT_ALLOWED_EXTENSIONS;
 
     protected string $baseUrl = '';
 
-    protected int $modeDir = 0755;
+    protected int $modeDir = 0o755;
 
-    protected int $modeFile = 0644;
+    protected int $modeFile = 0o644;
 
-    protected int $thumbnailSize = 50;
-
-    protected bool $readOnly = false;
+    protected string $name;
 
     protected bool $normalizeNames = true;
 
     protected bool $overwriteFiles = true;
 
-    /**
-     * @var array<string>
-     */
-    protected array $allowedExtensions = self::DEFAULT_ALLOWED_EXTENSIONS;
+    protected bool $readOnly = false;
+
+    protected int $thumbnailSize = 50;
 
     public function __construct(string $name)
     {
@@ -80,6 +71,11 @@ abstract class Storage
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function isReadOnly(): bool
+    {
+        return $this->readOnly;
     }
 
     public function setOption(string $name, bool | int | string $value): void
@@ -110,18 +106,13 @@ abstract class Storage
                 $this->allowedExtensions = array_values(
                     array_filter(
                         array_map('trim', explode(',', strtolower((string)$value))),
-                        static fn(string $extension): bool => $extension !== ''
-                    )
+                        static fn(string $extension): bool => $extension !== '',
+                    ),
                 );
                 break;
             default:
-                throw new InvalidArgumentException('invalid option "' . $name . '"');
+                throw new \InvalidArgumentException('invalid option "' . $name . '"');
         }
-    }
-
-    public function isReadOnly(): bool
-    {
-        return $this->readOnly;
     }
 
     /**

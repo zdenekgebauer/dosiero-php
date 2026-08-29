@@ -15,5 +15,8 @@ Thumbs.db
 /tests/*.suite.yml
 /tests/_envs/local.yml
 /tests/_output/*
-/tests/_support/_generated/*
+/tests/Support/_generated/*
 /vendor/
+
+# directory listing cache written by LocalDirectory
+.htdircache

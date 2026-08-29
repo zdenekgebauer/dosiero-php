@@ -6,23 +6,30 @@ namespace Dosiero;
 
 class Config
 {
+    /** @var array<string> */
+    private array $allowedIp = [];
+
+    private string $basicAuthPassword = '';
+
+    private string $basicAuthUser = '';
     private string $sessionName = '';
 
     private string $sessionValue = '';
 
-    /**
-     * @var array<string>
-     */
-    private array $allowedIp = [];
-
-    private string $basicAuthUser = '';
-
-    private string $basicAuthPassword = '';
-
-    public function requireSession(string $sessionName, string $sessionValue): void
+    /** @return array<string> */
+    public function getAllowedIp(): array
     {
-        $this->sessionName = $sessionName;
-        $this->sessionValue = $sessionValue;
+        return $this->allowedIp;
+    }
+
+    public function getBasicAuthPassword(): string
+    {
+        return $this->basicAuthPassword;
+    }
+
+    public function getBasicAuthUser(): string
+    {
+        return $this->basicAuthUser;
     }
 
     public function getSessionName(): string
@@ -35,35 +42,21 @@ class Config
         return $this->sessionValue;
     }
 
-    /**
-     * @return array<string>
-     */
-    public function getAllowedIp(): array
-    {
-        return $this->allowedIp;
-    }
-
-    /**
-     * @param array<string> $allowedIp
-     */
-    public function setAllowedIp(array $allowedIp): void
-    {
-        $this->allowedIp = array_values(array_filter(array_map('trim', $allowedIp)));
-    }
-
     public function requireBasicAuth(string $user, string $password): void
     {
         $this->basicAuthUser = $user;
         $this->basicAuthPassword = $password;
     }
 
-    public function getBasicAuthUser(): string
+    public function requireSession(string $sessionName, string $sessionValue): void
     {
-        return $this->basicAuthUser;
+        $this->sessionName = $sessionName;
+        $this->sessionValue = $sessionValue;
     }
 
-    public function getBasicAuthPassword(): string
+    /** @param array<string> $allowedIp */
+    public function setAllowedIp(array $allowedIp): void
     {
-        return $this->basicAuthPassword;
+        $this->allowedIp = array_values(array_filter(array_map('trim', $allowedIp)));
     }
 }
