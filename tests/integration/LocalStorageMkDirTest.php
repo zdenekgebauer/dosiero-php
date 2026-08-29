@@ -44,7 +44,7 @@ class LocalStorageMkDirTest extends LocalStorageBase
         $connector = $this->getConnectorDefault();
 
         $this->tester->expectThrowable(
-            new InvalidRequestException('invalid folder name ""'),
+            new InvalidRequestException('invalid name ""'),
             static function () use ($connector) {
                 $connector->handleRequest();
             }
@@ -52,7 +52,7 @@ class LocalStorageMkDirTest extends LocalStorageBase
 
         $_POST['folder'] = '*';
         $this->tester->expectThrowable(
-            new InvalidRequestException('invalid folder name "*"'),
+            new InvalidRequestException('name "*" contains characters that are not allowed'),
             static function () use ($connector) {
                 $connector->handleRequest();
             }

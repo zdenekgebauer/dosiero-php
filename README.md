@@ -103,4 +103,43 @@ $response->sendOutput();
 ```
 2. Do not forget set access control (basic auth, session or IP address)
 3. Set at least one file storage
-4. Set url of entry point in Dosiero client side configuration   
+4. Set url of entry point in Dosiero client side configuration
+
+## Securing the data directory
+
+`BASE_URL` has to be publicly reachable, so `BASE_DIR` usually sits under the web
+root. Anything that lands there is served by the web server, which makes the data
+directory the most sensitive part of the installation.
+
+**Uploads are restricted to a list of extensions.** The default list covers images,
+common documents and archives; extensions a web server can be talked into executing
+(`php`, `phtml`, `phar`, `cgi`, `htaccess`, …) are refused in *any* position of the
+name, so `invoice.php.jpg` does not get through either. A file claiming an image
+extension has to actually be an image.
+
+Narrow or widen the list per storage:
+
+```php
+$localStorage->setOption(LocalStorage::OPTION_ALLOWED_EXTENSIONS, 'jpg,jpeg,png,gif,webp,pdf');
+```
+
+`svg` is **not** in the default list on purpose. An SVG can carry script and is
+served from the same origin as your site, so enabling it is a decision to make
+knowingly.
+
+**Turn off script execution in the data directory as well.** The extension list is
+one layer; the web server should be the second. For Apache, next to the data files:
+
+```apache
+php_flag engine off
+RemoveHandler .php .phtml .phar .cgi .pl .py
+AddType text/plain .php .phtml .phar
+Options -ExecCGI -Indexes
+```
+
+On nginx make sure no `location ~ \.php$` block applies to the data directory.
+
+**Keep the thumbnail cache out of reach.** Every directory gets a `.htdircache`
+file holding the listing including base64 thumbnails. The `.ht` prefix is only
+honoured by Apache's default configuration - on nginx the file is downloadable
+unless you block it explicitly.

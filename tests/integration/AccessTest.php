@@ -26,6 +26,17 @@ class AccessTest extends \Codeception\Test\Unit
         $config->requireSession('custom_session_name', 'custom_session_name');
         $connector = new Connector($config);
         $_GET['action'] = 'folders';
+
+        // $_SESSION does not exist at all - the session was never started
+        $this->tester->expectThrowable(
+            new AccessForbiddenException('session is required but was not started'),
+            static function () use ($connector) {
+                $connector->handleRequest();
+            }
+        );
+
+        // session exists but does not carry the required key
+        $_SESSION = [];
         $this->tester->expectThrowable(
             new AccessForbiddenException('missing required session variable'),
             static function () use ($connector) {
@@ -76,6 +87,26 @@ class AccessTest extends \Codeception\Test\Unit
             static function () use ($connector) {
                 $connector->handleRequest();
             }
+        );
+
+        // the password used to be compared against the user name, so supplying the
+        // user name as the password passed and the real password was refused
+        $_SERVER['PHP_AUTH_USER'] = 'user';
+        $_SERVER['PHP_AUTH_PW'] = 'user';
+        $this->tester->expectThrowable(
+            new AccessForbiddenException('invalid basic authentication'),
+            static function () use ($connector) {
+                $connector->handleRequest();
+            }
+        );
+
+        // correct credentials must get past access control; the request then fails
+        // later on the unknown action, which is what we assert
+        $_SERVER['PHP_AUTH_USER'] = 'user';
+        $_SERVER['PHP_AUTH_PW'] = 'password';
+        $this->tester->assertSame(
+            'missing or invalid parameter "action"',
+            $connector->handleRequest()->toStdClass()->msg
         );
     }
 

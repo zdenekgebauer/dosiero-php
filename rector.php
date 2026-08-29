@@ -15,9 +15,7 @@ return RectorConfig::configure()
     )
     ->withPhpSets(php83: true)
     ->withPHPStanConfigs([__DIR__ . '/build/phpstan.neon'])
-    // this code has never been through Rector - raise the levels one step at a
-    // time and commit in between, otherwise the first run buries everything in
-    // one unreviewable diff
+    // levels start at 0, this code has never been through Rector
     ->withTypeCoverageLevel(0)
     ->withDeadCodeLevel(0)
     ->withCodeQualityLevel(0)

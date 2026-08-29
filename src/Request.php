@@ -48,12 +48,46 @@ class Request
 
     public function getSelectedFiles(): array
     {
-        return isset($_POST['files']) && is_array($_POST['files']) ? array_map('\strval', $_POST['files']) : [];
+        if (!isset($_POST['files']) || !is_array($_POST['files'])) {
+            return [];
+        }
+        return array_map([self::class, 'assertPlainName'], array_map('\strval', $_POST['files']));
     }
 
     public function getNewFolder(): string
     {
-        return trim($_POST['folder'] ?? '');
+        return self::assertNewName(trim($_POST['folder'] ?? ''));
+    }
+
+    /**
+     * For names of items that already exist. Deliberately weaker than
+     * assertNewName(): such a name may predate the installation or come from
+     * outside, and it still has to be possible to delete or move it.
+     */
+    private static function assertPlainName(string $name): string
+    {
+        if (
+            $name === ''
+            || $name === '.'
+            || $name === '..'
+            || basename($name) !== $name
+            || strpbrk($name, "/\\\0") !== false
+        ) {
+            throw new InvalidRequestException('invalid name "' . $name . '"');
+        }
+        return $name;
+    }
+
+    /**
+     * For names being created: additionally has to be storable on every supported system.
+     */
+    private static function assertNewName(string $name): string
+    {
+        self::assertPlainName($name);
+        if (!Utils::isValidFileName($name)) {
+            throw new InvalidRequestException('name "' . $name . '" contains characters that are not allowed');
+        }
+        return $name;
     }
 
     public function getTargetStorage(): string
@@ -73,11 +107,11 @@ class Request
 
     public function getOldFile(): string
     {
-        return trim($_POST['old'] ?? '');
+        return self::assertPlainName(trim($_POST['old'] ?? ''));
     }
 
     public function getNewFile(): string
     {
-        return trim($_POST['new'] ?? '');
+        return self::assertNewName(trim($_POST['new'] ?? ''));
     }
 }

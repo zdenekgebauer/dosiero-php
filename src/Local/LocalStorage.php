@@ -77,16 +77,29 @@ class LocalStorage extends Storage implements StorageInterface
     }
 
     /**
+     * Canonicalizes both sides with realpath() before comparing, so "..", an
+     * absolute path or a symlink cannot escape the storage.
+     *
      * @param string $path absolute path without trailing slash
      */
     private function absPath(string $path): string
     {
-        $path = trim($path, '/');
-        $fullPath = $this->baseDir . $path;
-        if (!is_dir($fullPath)) {
+        $baseDir = realpath($this->baseDir);
+        $fullPath = realpath($this->baseDir . trim($path, '/'));
+
+        if ($baseDir === false || $fullPath === false || !self::isInsideBaseDir($fullPath, $baseDir)) {
             throw new StorageException('not found path "' . $path . '"');
         }
+
         return $fullPath;
+    }
+
+    /**
+     * Both arguments must already be canonicalized by realpath().
+     */
+    private static function isInsideBaseDir(string $path, string $baseDir): bool
+    {
+        return $path === $baseDir || str_starts_with($path, $baseDir . DIRECTORY_SEPARATOR);
     }
 
     public function mkDir(string $path, string $newFolder): void
@@ -108,7 +121,10 @@ class LocalStorage extends Storage implements StorageInterface
             $fileName = basename($field['name']);
             if ($this->normalizeNames) {
                 $fileName = Utils::normalizeFileName($fileName);
+            } elseif (!Utils::isValidFileName($fileName)) {
+                throw new StorageException('invalid file name "' . $fileName . '"');
             }
+            $this->assertAllowedUpload($fileName, (string)$field['tmp_name']);
 
             $targetFullPath = $targetDir . '/' . $fileName;
             if (!$this->overwriteFiles && is_file($targetFullPath)) {
@@ -144,7 +160,7 @@ class LocalStorage extends Storage implements StorageInterface
         $targetDir = $this->absPath($targetPath);
 
         foreach ($files as $file) {
-            $sourceFullPath = $sourceDir . $file;
+            $sourceFullPath = $sourceDir . '/' . $file;
             if (is_dir($sourceFullPath)) {
                 $this->recursiveCopy($sourceFullPath, $targetDir . '/' . $file);
                 $copiedFolder = true;
@@ -179,7 +195,7 @@ class LocalStorage extends Storage implements StorageInterface
         $targetDir = $this->absPath($targetPath);
 
         foreach ($files as $file) {
-            $sourceFullPath = $sourceDir . $file;
+            $sourceFullPath = $sourceDir . '/' . $file;
             if (is_dir($sourceFullPath)) {
                 $this->recursiveMove($sourceFullPath, $targetDir . '/' . $file);
                 $movedFolder = true;

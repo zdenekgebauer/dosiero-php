@@ -114,7 +114,7 @@ class LocalStorageRenameTest extends LocalStorageBase
         $connector = $this->getConnectorDefault();
 
         $this->tester->expectThrowable(
-            new StorageException('allowed rename in current folder only'),
+            new InvalidRequestException('invalid name "folder/copy-file.txt"'),
             static function () use ($connector) {
                 $connector->handleRequest();
             }

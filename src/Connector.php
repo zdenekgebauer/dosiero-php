@@ -72,24 +72,30 @@ class Connector
         $basicAuthUser = $this->config->getBasicAuthUser();
         $basicAuthPassword = $this->config->getBasicAuthPassword();
 
-        if (
-            (!empty($basicAuthUser) || !empty($basicAuthPassword))
-            && !isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])
-        ) {
-            throw new AccessForbiddenException('missing required basic auth');
-        }
-        if (
-            isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])
-            && ($_SERVER['PHP_AUTH_USER'] !== $basicAuthUser || $_SERVER['PHP_AUTH_PW'] !== $basicAuthUser)
-        ) {
-            throw new AccessForbiddenException('invalid basic authentication');
+        if ($basicAuthUser !== '' || $basicAuthPassword !== '') {
+            if (!isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])) {
+                throw new AccessForbiddenException('missing required basic auth');
+            }
+            $user = is_string($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : '';
+            $password = is_string($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
+            $validUser = hash_equals($basicAuthUser, $user);
+            $validPassword = hash_equals($basicAuthPassword, $password);
+            if (!$validUser || !$validPassword) {
+                throw new AccessForbiddenException('invalid basic authentication');
+            }
         }
 
-        if (!empty($sessionName && !isset($_SESSION[$sessionName]))) {
-            throw new AccessForbiddenException('missing required session variable');
-        }
-        if (!empty($sessionValue) && $_SESSION[$sessionName] !== $sessionValue) {
-            throw new AccessForbiddenException('missing or invalid value of required session variable');
+        if ($sessionName !== '') {
+            // $_SESSION exists only after session_start(), but may also be populated directly
+            if (session_status() !== PHP_SESSION_ACTIVE && !isset($_SESSION)) {
+                throw new AccessForbiddenException('session is required but was not started');
+            }
+            if (!isset($_SESSION[$sessionName])) {
+                throw new AccessForbiddenException('missing required session variable');
+            }
+            if ($sessionValue !== '' && $_SESSION[$sessionName] !== $sessionValue) {
+                throw new AccessForbiddenException('missing or invalid value of required session variable');
+            }
         }
         if (
             !empty($allowedIp)
@@ -155,10 +161,6 @@ class Connector
 
     public function rename(Request $request): Response
     {
-        if (strpos($request->getOldFile(), '/') !== false || strpos($request->getNewFile(), '/') !== false) {
-            throw new StorageException('allowed rename in current folder only');
-        }
-
         $storage = $this->getStorage($request->getStorage());
         $this->assertNotReadOnly($storage);
 
@@ -176,10 +178,10 @@ class Connector
     public function delete(Request $request): Response
     {
         $storage = $this->getStorage($request->getStorage());
+        $this->assertNotReadOnly($storage);
 
         $deletedFolder = false;
         $storage->delete($request->getPath(), $request->getSelectedFiles(), $deletedFolder);
-        $this->assertNotReadOnly($storage);
 
         $response = new Response();
         $response->setFiles($storage->getFiles($request->getPath()));
