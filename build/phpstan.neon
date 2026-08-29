@@ -1,11 +1,14 @@
+includes:
+    - ../vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - ../vendor/phpstan/phpstan-strict-rules/rules.neon
 parameters:
     paths:
         - ../src/
     level: max
+    phpVersion: 80300
+    tmpDir: cache/phpstan
     bootstrapFiles:
         - ../vendor/autoload.php
-    excludes_analyse:
-        - ../vendor/
-    checkMissingIterableValueType: false
-    ignoreErrors:
-
+    excludePaths:
+        analyseAndScan:
+            - ../vendor/

@@ -1,51 +1,80 @@
 name: dosiero
+excludes:
+    - vendor
 services:
-  appserver:
-    type: php:8.5
-    via: apache:2.4
-    ssl: true
-    sslExpose: true
-    webroot: .
-    xdebug: coverage
-    composer_version: 2-latest
-    build_as_root:
-      - docker-php-ext-install sockets
+    appserver:
+        type: php:8.5
+        via: apache:2.4
+        ssl: true
+        sslExpose: true
+        webroot: .
+        scanner: false
+        composer_version: 2-latest
+        xdebug: true
+        overrides:
+            environment:
+                XDEBUG_MODE: 'off'
+        build_as_root:
+            - docker-php-ext-install sockets
 proxy:
-  appserver:
-    - dosiero-php.local
+    appserver:
+        - dosiero-php.local
 tooling:
-  php:
-    service: appserver
-  composer:
-    service: appserver
-  phpcs:
-    service: appserver
-    description: check cocing standards (PHP CodeSniffer)
-    cmd: php build/phpcs.phar --standard=PSR12 --report-file=build/reports/checkstyle.txt src
-  phpstan:
-    service: appserver
-    description: static analysis (PHPStan)
-    cmd: php build/phpstan.phar analyze -c build/phpstan.neon > build/reports/phpstan.txt
-  tests:
-    service: appserver
-    description: all tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run unit,integration,api --html report-tests.html
-  tests_unit:
-    service: appserver
-    description: unit tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run unit --html report-unit.html
-  tests_integration:
-    service: appserver
-    description: integration tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run integration --html report-integration.html
-  tests_api:
-    service: appserver
-    description: API tests (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run api --html report-api.html
-  coverage:
-    service: appserver
-    description: code coverage (Codeception)
-    cmd: php vendor/codeception/codeception/codecept run unit,integration --html report-coverage.html --coverage-html
+    install:
+        description: install third party packages
+        cmd:
+            - appserver: composer install
+    php:
+        service: appserver
+        dir: /app
+    composer:
+        service: appserver
+        dir: /app
+    phpstan:
+        service: appserver
+        description: static analysis (PHPStan)
+        dir: /app
+        cmd: php /app/vendor/bin/phpstan analyze -c build/phpstan.neon --no-progress --error-format=raw
+    phpstan-log:
+        service: appserver
+        description: static analysis (PHPStan) to build/reports/phpstan.txt
+        dir: /app
+        cmd: php /app/vendor/bin/phpstan analyze -c build/phpstan.neon --no-progress --error-format=raw > build/reports/phpstan.txt
+    rector:
+        service: appserver
+        description: rector dry-run
+        dir: /app
+        cmd: php /app/vendor/bin/rector --dry-run --no-progress-bar
+    rector-fix:
+        service: appserver
+        description: rector
+        dir: /app
+        cmd: php /app/vendor/bin/rector --no-progress-bar
+    ecs:
+        service: appserver
+        description: easy coding standards
+        dir: /app
+        cmd: php /app/vendor/bin/ecs check --no-progress-bar
+    ecs-fix:
+        service: appserver
+        description: easy coding standards
+        dir: /app
+        cmd: php /app/vendor/bin/ecs check --fix --no-progress-bar
+    codeception:
+        service: appserver
+        description: Run codeception
+        dir: /app
+        cmd: /app/vendor/bin/codecept
+    tests:
+        service: appserver
+        description: all tests (Codeception)
+        dir: /app
+        cmd: /app/vendor/bin/codecept run --html report-tests.html
+    coverage:
+        service: appserver
+        description: code coverage (Codeception)
+        dir: /app
+        cmd: XDEBUG_MODE=coverage /app/vendor/bin/codecept run --html report-coverage.html --coverage-html --coverage-text
 events:
-  pre-start:
-    - appserver: composer install
+    pre-start:
+        - appserver: composer install

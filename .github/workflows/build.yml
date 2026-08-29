@@ -24,17 +24,19 @@ jobs:
           extensions: fileinfo, gd, iconv, json
           coverage: none
 
-      - name: Validate composer.json and composer.lock
-        run: composer validate
+      - name: Validate composer.json
+        run: composer validate --no-check-lock
 
       - name: Install dependencies
         run: composer update --prefer-dist --no-progress
 
-      - name: Check coding standards
-        run: php build/phpcs.phar --standard=PSR12 src
+      - name: Coding standards (ECS)
+        run: vendor/bin/ecs check --no-progress-bar
 
-      - name: Static analysis
-        run: php build/phpstan.phar analyse -c build/phpstan.neon src
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyze -c build/phpstan.neon --no-progress --error-format=raw
 
-      - name: tests
+      # suite names become Unit,Integration when the Codeception 5 upgrade
+      # renames the directories
+      - name: Tests
         run: vendor/bin/codecept run unit,integration
