@@ -34,19 +34,19 @@ class LocalStorage extends Storage implements StorageInterface
                 throw new StorageException('cannot copy "' . $file . '"');
             }
         }
-        new LocalDirectory($targetDir, true, $this->thumbnailSize);
+        new LocalDirectory($targetDir, true, $this->thumbnailSize, $this->createCache());
     }
 
     public function delete(string $path, array $files, bool &$deletedFolder): void
     {
-        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize);
+        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize, $this->createCache());
         $directory->deleteFiles($files, $deletedFolder);
     }
 
     public function getFiles(string $path, bool $ignoreCache = false): iterable
     {
         $targetDir = $this->absPath($path);
-        $directory = new LocalDirectory($targetDir, $ignoreCache, $this->thumbnailSize);
+        $directory = new LocalDirectory($targetDir, $ignoreCache, $this->thumbnailSize, $this->createCache());
         $files = $directory->getFiles();
         $directoryUrl = $this->baseUrl . self::encodePath($path);
         foreach ($files as $file) {
@@ -63,7 +63,7 @@ class LocalStorage extends Storage implements StorageInterface
     public function mkDir(string $path, string $newFolder): void
     {
         $targetDir = $this->absPath($path);
-        $directory = new LocalDirectory($targetDir, false, $this->thumbnailSize);
+        $directory = new LocalDirectory($targetDir, false, $this->thumbnailSize, $this->createCache());
         $directory->mkDir($newFolder, $this->modeDir);
     }
 
@@ -83,12 +83,12 @@ class LocalStorage extends Storage implements StorageInterface
                 throw new StorageException('cannot move "' . $file . '"');
             }
         }
-        new LocalDirectory($targetDir, true, $this->thumbnailSize);
+        new LocalDirectory($targetDir, true, $this->thumbnailSize, $this->createCache());
     }
 
     public function rename(string $path, string $oldName, string $newName, bool &$renamedFolder): void
     {
-        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize);
+        $directory = new LocalDirectory($this->absPath($path), false, $this->thumbnailSize, $this->createCache());
         $directory->rename($oldName, $newName, $renamedFolder);
     }
 

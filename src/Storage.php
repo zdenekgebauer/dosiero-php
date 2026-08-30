@@ -9,6 +9,11 @@ abstract class Storage
     /** Comma separated list of extensions accepted by upload, e.g. 'jpg,png,pdf'. */
     public const OPTION_ALLOWED_EXTENSIONS = 'ALLOWED_EXTENSIONS';
     public const OPTION_BASE_URL = 'BASE_URL';
+
+    /** Directory for the listing cache; must not be publicly served. Empty keeps it next to the data. */
+    public const OPTION_CACHE_DIRECTORY = 'CACHE_DIRECTORY';
+
+    public const OPTION_CACHE_ENABLED = 'CACHE_ENABLED';
     public const OPTION_MODE_DIRECTORY = 'MODE_DIRECTORY';
     public const OPTION_MODE_FILE = 'MODE_FILE';
     public const OPTION_NORMALIZE_NAMES = 'NORMALIZE_NAMES';
@@ -49,6 +54,10 @@ abstract class Storage
 
     protected string $baseUrl = '';
 
+    protected string $cacheDirectory = '';
+
+    protected bool $cacheEnabled = true;
+
     protected int $modeDir = 0o755;
 
     protected int $modeFile = 0o644;
@@ -83,6 +92,16 @@ abstract class Storage
         switch ($name) {
             case self::OPTION_BASE_URL:
                 $this->baseUrl = rtrim((string)$value, '/') . '/';
+                break;
+            case self::OPTION_CACHE_DIRECTORY:
+                $value = (string)$value;
+                if ($value !== '' && !is_dir($value)) {
+                    throw new \InvalidArgumentException('directory "' . $value . '" not found');
+                }
+                $this->cacheDirectory = $value;
+                break;
+            case self::OPTION_CACHE_ENABLED:
+                $this->cacheEnabled = (bool)$value;
                 break;
             case self::OPTION_THUMBNAIL_SIZE:
                 $this->thumbnailSize = max([10, (int)$value]);
@@ -143,5 +162,10 @@ abstract class Storage
                 throw new StorageException('file "' . $fileName . '" is not a valid image');
             }
         }
+    }
+
+    protected function createCache(): Cache
+    {
+        return new Cache($this->cacheEnabled, $this->cacheDirectory, $this->name);
     }
 }

@@ -139,7 +139,24 @@ Options -ExecCGI -Indexes
 
 On nginx make sure no `location ~ \.php$` block applies to the data directory.
 
-**Keep the thumbnail cache out of reach.** Every directory gets a `.htdircache`
-file holding the listing including base64 thumbnails. The `.ht` prefix is only
-honoured by Apache's default configuration - on nginx the file is downloadable
-unless you block it explicitly.
+**Keep the listing cache out of reach.** By default every directory gets a
+`.htdircache` file holding its listing including base64 thumbnails. The `.ht`
+prefix is only honoured by Apache's default configuration - on nginx the file is
+downloadable unless you block it explicitly. What leaks is not the files, which
+are public anyway, but the listing: names nobody linked to, plus their thumbnails.
+
+Two options change that:
+
+```php
+$storage->setOption(Storage::OPTION_CACHE_DIRECTORY, '/var/cache/dosiero');
+$storage->setOption(Storage::OPTION_CACHE_ENABLED, false);
+```
+
+`CACHE_DIRECTORY` moves the cache to a directory of your choice - pick one outside
+the web root, and not a temp directory shared with other accounts. `CACHE_ENABLED`
+switches caching off completely; listings then rebuild thumbnails on every request,
+which is slower but writes nothing anywhere.
+
+A directory the web server cannot write to - a read-only mount, another owner - is
+handled the same way as `CACHE_ENABLED = false`: the listing works and nothing is
+cached. Set `CACHE_DIRECTORY` to get the cache back for such a storage.

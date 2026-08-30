@@ -37,7 +37,7 @@ class LocalStorageBase extends \Codeception\Test\Unit
 
     protected function getCached(string $file)
     {
-        return json_decode(file_get_contents($file), true);
+        return json_decode(file_get_contents($file), true)['files'];
     }
 
     protected function getConnectorDefault(): Connector

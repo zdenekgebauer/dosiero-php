@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dosiero\Local;
 
+use Dosiero\Cache;
 use Dosiero\File;
 use Dosiero\FileInterface;
 use Dosiero\StorageException;
@@ -13,9 +14,7 @@ use function is_array;
 
 class LocalDirectory
 {
-    private const CACHE_FILE = '.htdircache';
-
-    private string $cacheFile;
+    private Cache $cache;
 
     /** @var array<FileInterface> */
     private array $files;
@@ -24,19 +23,18 @@ class LocalDirectory
 
     private int $thumbnailSize;
 
-    public function __construct(string $folder, bool $ignoreCache, int $thumbnailSize)
+    public function __construct(string $folder, bool $ignoreCache, int $thumbnailSize, ?Cache $cache = null)
     {
         $this->folder = rtrim($folder, '/') . '/';
         $this->thumbnailSize = $thumbnailSize;
+        $this->cache = $cache ?? new Cache();
 
-        $loaded = false;
-        $this->cacheFile = $this->folder . self::CACHE_FILE;
-        if (!$ignoreCache && is_file($this->cacheFile) && filemtime($this->cacheFile) > time() - 7200) {
-            $loaded = $this->loadFilesFromCache();
-        }
-        if (!$loaded) {
+        $cached = $ignoreCache ? null : $this->cache->load($this->folder);
+        if ($cached === null) {
             $this->loadFiles();
             $this->saveFilesToCache();
+        } else {
+            $this->files = $cached;
         }
     }
 
@@ -141,31 +139,11 @@ class LocalDirectory
         clearstatcache();
         $this->files = [];
         foreach (new \DirectoryIterator($this->folder) as $fileInfo) {
-            if ($fileInfo->isDot() || $fileInfo->getBasename() === self::CACHE_FILE) {
+            if ($fileInfo->isDot() || $fileInfo->getBasename() === Cache::FILE_NAME) {
                 continue;
             }
             $this->loadFile((string)$fileInfo->getRealPath());
         }
-    }
-
-    private function loadFilesFromCache(): bool
-    {
-        try {
-            $cache = json_decode((string)file_get_contents($this->cacheFile), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $exception) {
-            return false;
-        }
-        $this->files = [];
-        foreach ($cache as $item) {
-            $file = new File($item['name'], $item['type']);
-            $file->setSize($item['size']);
-            $file->setModified($item['modified']);
-            $file->setWidth($item['width']);
-            $file->setHeight($item['height']);
-            $file->setThumbnail($item['thumbnail']);
-            $this->files[$file->getName()] = $file;
-        }
-        return true;
     }
 
     private function rmdirRecursive(string $path): void
@@ -191,20 +169,6 @@ class LocalDirectory
 
     private function saveFilesToCache(): void
     {
-        $cache = [];
-        foreach ($this->files as $file) {
-            $fileName = $file->getName();
-            $cache[$fileName] = [
-                'name' => $fileName,
-                'type' => $file->getType(),
-                'size' => $file->getSize(),
-                'modified' => $file->getModified(),
-                'width' => $file->getWidth(),
-                'height' => $file->getHeight(),
-                'thumbnail' => $file->getThumbnail(),
-            ];
-        }
-        ksort($cache);
-        file_put_contents($this->cacheFile, json_encode($cache, JSON_THROW_ON_ERROR));
+        $this->cache->save($this->folder, $this->files);
     }
 }
