@@ -125,6 +125,7 @@ class LocalStorageFilesTest extends LocalStorageBase
         $files = $responseJson->files;
         $this->tester->assertCount(1, $files);
         $this->tester->assertEquals('file2.txt', $files[0]['name']);
+        $this->tester->assertEquals($this->testUrl . 'folder/subfolder/file2.txt', $files[0]['url']);
 
         $cache = $this->getCached($this->testDirectory . '/folder/subfolder/.htdircache');
         $this->tester->assertCount(1, $cache);
@@ -154,6 +155,22 @@ class LocalStorageFilesTest extends LocalStorageBase
             },
         );
         $this->tester->assertCount(1, $itemFile);
+    }
+
+    public function testFileUrlIsEncoded(): void
+    {
+        mkdir($this->testDirectory . '/a b&c', 0o777, true);
+        file_put_contents($this->testDirectory . '/a b&c/x y#z.txt', '');
+
+        $_GET['storage'] = self::STORAGE_NAME;
+        $_GET['action'] = 'files';
+        $_GET['path'] = 'a b&c';
+
+        $files = $this->getConnectorDefault()->handleRequest()->toStdClass()->files;
+
+        $this->tester->assertCount(1, $files);
+        $this->tester->assertEquals('x y#z.txt', $files[0]['name']);
+        $this->tester->assertEquals($this->testUrl . 'a%20b%26c/x%20y%23z.txt', $files[0]['url']);
     }
 
     public function testGetStorages(): void

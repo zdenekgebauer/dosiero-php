@@ -106,12 +106,12 @@ class AccessTest extends \Codeception\Test\Unit
 
     protected function _after()
     {
-        unset($_SESSION, $_SERVER);
+        unset($_SESSION, $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
     }
 
     protected function _before()
     {
-        unset($_SESSION, $_SERVER);
+        unset($_SESSION, $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
     }
 
 }

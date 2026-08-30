@@ -48,8 +48,9 @@ class LocalStorage extends Storage implements StorageInterface
         $targetDir = $this->absPath($path);
         $directory = new LocalDirectory($targetDir, $ignoreCache, $this->thumbnailSize);
         $files = $directory->getFiles();
+        $directoryUrl = $this->baseUrl . self::encodePath($path);
         foreach ($files as $file) {
-            $file->setDirectoryUrl($this->baseUrl . $path);
+            $file->setDirectoryUrl($directoryUrl);
         }
         return $files;
     }
@@ -153,6 +154,16 @@ class LocalStorage extends Storage implements StorageInterface
         }
 
         return $fullPath;
+    }
+
+    /** result is either empty or ends with a slash */
+    private static function encodePath(string $path): string
+    {
+        $path = trim($path, '/');
+        if ($path === '') {
+            return '';
+        }
+        return implode('/', array_map('\rawurlencode', explode('/', $path))) . '/';
     }
 
     /**

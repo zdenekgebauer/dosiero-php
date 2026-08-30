@@ -14,18 +14,18 @@ class File implements FileInterface
 
     protected string $directoryUrl = '';
 
-    protected ?int $height;
+    protected ?int $height = null;
 
     protected string $modified = '';
 
     protected string $name;
 
-    protected ?string $thumbnail;
+    protected ?string $thumbnail = null;
 
     /** @var string dir|file|link */
     protected string $type;
 
-    protected ?int $width;
+    protected ?int $width = null;
 
     private int $size = 0;
 
@@ -67,7 +67,7 @@ class File implements FileInterface
 
     public function getUrl(): string
     {
-        return $this->directoryUrl . $this->name;
+        return $this->directoryUrl . rawurlencode($this->name);
     }
 
     public function getWidth(): ?int

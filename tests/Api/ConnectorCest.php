@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Api;
 
 use Codeception\Util\HttpCode;
+use Tests\Support\ApiTester;
 
 class ConnectorCest
 {
@@ -121,7 +122,7 @@ class ConnectorCest
         $I->sendPOST('/?action=mkdir&storage=' . self::STORAGE_NAME, $post);
         $I->seeResponseIsJson();
 
-        $I->seeResponseContainsJson(['msg' => 'invalid folder name "*"']);
+        $I->seeResponseContainsJson(['msg' => 'name "*" contains characters that are not allowed']);
         $I->seeResponseCodeIs(HttpCode::BAD_REQUEST);
     }
 

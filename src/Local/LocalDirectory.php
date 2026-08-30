@@ -113,7 +113,7 @@ class LocalDirectory
         $imageWidth = null;
         $imageHeight = null;
         $thumbnail = null;
-        if ($fileInfo !== 'dir') {
+        if ($fileInfo->getType() !== 'dir') {
             $realPath = (string)$fileInfo->getRealPath();
             $contentType = (string)mime_content_type($realPath);
             $isImage = strncmp($contentType, 'image', 5) === 0;
