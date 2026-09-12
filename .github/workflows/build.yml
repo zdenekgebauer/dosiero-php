@@ -38,3 +38,19 @@ jobs:
 
       - name: Tests
         run: vendor/bin/codecept run Unit,Integration
+
+      # the Api suite drives the connector over real http, which is the only place the CORS and
+      # preflight headers are actually produced - php's built-in server is enough for that
+      - name: Start endpoint
+        run: |
+          php -S 127.0.0.1:8080 -t tests/Support/Endpoint > /tmp/endpoint.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -sf -o /dev/null "http://127.0.0.1:8080/?action=storages" -H 'X-Dosiero-Protocol: 1'; then
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "endpoint did not come up"; cat /tmp/endpoint.log; exit 1
+
+      - name: Api tests
+        run: vendor/bin/codecept run Api --env ci

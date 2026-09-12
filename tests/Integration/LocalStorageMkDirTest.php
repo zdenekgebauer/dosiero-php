@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use Dosiero\AccessForbiddenException;
-use Dosiero\Folder;
 use Dosiero\InvalidRequestException;
 
 class LocalStorageMkDirTest extends LocalStorageBase
@@ -50,7 +49,7 @@ class LocalStorageMkDirTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new AccessForbiddenException('storage "' . self::STORAGE_NAME . '" is read only'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -64,7 +63,7 @@ class LocalStorageMkDirTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new InvalidRequestException('invalid name ""'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -72,7 +71,7 @@ class LocalStorageMkDirTest extends LocalStorageBase
         $_POST['folder'] = '*';
         $this->tester->expectThrowable(
             new InvalidRequestException('name "*" contains characters that are not allowed'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );

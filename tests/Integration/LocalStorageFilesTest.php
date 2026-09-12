@@ -29,9 +29,7 @@ class LocalStorageFilesTest extends LocalStorageBase
 
         $itemFolder = array_filter(
             $files,
-            static function (array $file) {
-                return $file['name'] === 'folder';
-            },
+            static fn(array $file) => $file['name'] === 'folder',
         );
 
         $itemFolder = reset($itemFolder);
@@ -47,9 +45,7 @@ class LocalStorageFilesTest extends LocalStorageBase
 
         $itemFile = array_filter(
             $files,
-            static function (array $file) {
-                return $file['name'] === 'file.txt';
-            },
+            static fn(array $file) => $file['name'] === 'file.txt',
         );
         $itemFile = reset($itemFile);
         $this->tester->assertEquals('file', $itemFile['type']);
@@ -65,9 +61,7 @@ class LocalStorageFilesTest extends LocalStorageBase
 
         $itemImage = array_filter(
             $files,
-            static function (array $file) {
-                return $file['name'] === 'phpunit.jpg';
-            },
+            static fn(array $file) => $file['name'] === 'phpunit.jpg',
         );
         $itemImage = reset($itemImage);
         $this->tester->assertEquals('file', $itemImage['type']);
@@ -150,9 +144,7 @@ class LocalStorageFilesTest extends LocalStorageBase
 
         $itemFile = array_filter(
             $files,
-            static function (array $file) use ($fileName) {
-                return $file['name'] === $fileName;
-            },
+            static fn(array $file) => $file['name'] === $fileName,
         );
         $this->tester->assertCount(1, $itemFile);
     }
@@ -200,7 +192,7 @@ class LocalStorageFilesTest extends LocalStorageBase
         $connector = $this->getConnectorDefault();
         $this->tester->expectThrowable(
             new StorageException('not found path "not-exists"'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );

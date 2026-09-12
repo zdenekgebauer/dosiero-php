@@ -2,7 +2,7 @@
   "name": "zdenekgebauer/dosiero",
   "description": "PHP server connector for Dosiero file manager",
   "type": "library",
-  "license": "WTFPL",
+  "license": "MIT",
   "authors": [
     {
       "name": "Zdenek Gebauer",

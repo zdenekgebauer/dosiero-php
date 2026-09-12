@@ -173,7 +173,6 @@ class ConnectorCest
         $I->assertEquals('', $json->msg);
         $I->assertCount(1, $json->files);
         $I->assertEquals('new.jpg', $json->files[0]->name);
-        //$I->assertEquals(self::STORAGE_NAME, $json->storage->name);
 
         $I->seeResponseCodeIs(HttpCode::OK);
 
@@ -228,6 +227,9 @@ class ConnectorCest
     {
         unset($_GET, $_POST, $_FILES);
         $this->testDirectory = codecept_data_dir('local');
+        if (!is_dir($this->testDirectory)) {
+            mkdir($this->testDirectory, 0o777, true);
+        }
         $I->emptyDirRecursive($this->testDirectory);
     }
 }

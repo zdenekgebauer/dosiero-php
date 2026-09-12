@@ -8,15 +8,18 @@ use function function_exists;
 
 class Thumbnail
 {
-    /**
-     * returns thumbnail as base64 data uri
-     *
-     * @param string $file
-     * @param int $maxSize
-     * @return string
-     */
+    // a single absurd dimension is refused even when the total would pass, e.g. 1 x 500_000_000
+    private const int MAX_DIMENSION = 50_000;
+
+    /** Roughly a 100 Mpx image; a thumbnail is not worth more memory than that. */
+    private const int MAX_PIXELS = 100_000_000;
+
+    /** @return string thumbnail as base64 data uri */
     public static function createThumbnailFromFile(string $file, int $maxSize = 50): string
     {
+        if (!self::isWithinPixelLimit($file)) {
+            return '';
+        }
         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
         $ext = str_replace('jpeg', 'jpg', $ext);
         return self::createThumbnailFromString((string)file_get_contents($file), $ext, $maxSize);
@@ -24,7 +27,7 @@ class Thumbnail
 
     public static function createThumbnailFromString(string $image, string $ext, int $maxSize = 50): string
     {
-        if (empty($image)) {
+        if ($image === '') {
             return '';
         }
         $imgOrig = @imagecreatefromstring($image);
@@ -54,28 +57,31 @@ class Thumbnail
             }
         }
 
-        $imgThumb = imagecreatetruecolor($thumbWidth, $thumbHeight);
-        if (!$imgThumb) {
+        // imagecreatetruecolor() refuses a zero dimension, which imagesx()/imagesy() can report for
+        // an image GD accepted but could not size
+        if ($thumbWidth < 1 || $thumbHeight < 1) {
             return '';
         }
+        $imgThumb = imagecreatetruecolor($thumbWidth, $thumbHeight);
 
         if ($ext === 'gif') {
-            $transparentIndex = (int)imagecolortransparent($imgOrig);
+            $transparentIndex = imagecolortransparent($imgOrig);
             if ($transparentIndex >= 0) {
                 // get original image's transparent color's RGB values
-                /**  @var array<string, int> $transparentColor */
                 $transparentColor = imagecolorsforindex($imgOrig, $transparentIndex);
                 // allocate the same color in the new image
-                $transparentIndex = (int)imagecolorallocate(
+                $allocated = imagecolorallocate(
                     $imgThumb,
                     $transparentColor['red'],
                     $transparentColor['green'],
                     $transparentColor['blue'],
                 );
-                // fill the background of the new image with allocated color
-                imagefill($imgThumb, 0, 0, $transparentIndex);
-                // set the background color to transparent
-                imagecolortransparent($imgThumb, $transparentIndex);
+                if ($allocated !== false) {
+                    // fill the background of the new image with allocated color
+                    imagefill($imgThumb, 0, 0, $allocated);
+                    // set the background color to transparent
+                    imagecolortransparent($imgThumb, $allocated);
+                }
             }
         }
         if ($ext === 'png') {
@@ -104,8 +110,6 @@ class Thumbnail
         );
 
         $imageData = self::imageToData($imgThumb, $ext);
-        imagedestroy($imgOrig);
-        imagedestroy($imgThumb);
         $mimes = [
             'png' => 'image/png',
             'jpeg' => 'image/jpg',
@@ -124,8 +128,20 @@ class Thumbnail
             return '';
         }
         ob_start();
-        /** @var callable $imageFunction */
         $imageFunction($image);
         return (string)ob_get_clean();
+    }
+
+    private static function isWithinPixelLimit(string $file): bool
+    {
+        $size = @getimagesize($file);
+        if (!is_array($size)) {
+            return false;
+        }
+        [$width, $height] = $size;
+        if ($width < 1 || $height < 1 || $width > self::MAX_DIMENSION || $height > self::MAX_DIMENSION) {
+            return false;
+        }
+        return $width * $height <= self::MAX_PIXELS;
     }
 }

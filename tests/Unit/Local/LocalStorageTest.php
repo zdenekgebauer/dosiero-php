@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Local;
 
+use Codeception\Test\Unit;
 use Dosiero\Local\LocalStorage;
-use Dosiero\Storage;
 use Tests\Support\UnitTester;
 
-class LocalStorageTest extends \Codeception\Test\Unit
+class LocalStorageTest extends Unit
 {
     protected UnitTester $tester;
 
@@ -23,7 +23,7 @@ class LocalStorageTest extends \Codeception\Test\Unit
 
         $this->tester->expectThrowable(
             new \InvalidArgumentException('directory "notexiststs" not found'),
-            static function () use ($storage) {
+            static function () use ($storage): void {
                 $storage->setOption(LocalStorage::OPTION_BASE_DIR, 'notexiststs');
             },
         );

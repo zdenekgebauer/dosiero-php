@@ -9,24 +9,26 @@ use Dosiero\File;
 use Dosiero\FileInterface;
 use Dosiero\StorageException;
 use Dosiero\Thumbnail;
+use Dosiero\Utils;
 
 use function is_array;
 
 class LocalDirectory
 {
-    private Cache $cache;
+    private readonly Cache $cache;
 
-    /** @var array<FileInterface> */
+    /** @var array<string, FileInterface> key is file name */
     private array $files;
 
-    private string $folder;
+    private readonly string $folder;
 
-    private int $thumbnailSize;
-
-    public function __construct(string $folder, bool $ignoreCache, int $thumbnailSize, ?Cache $cache = null)
-    {
+    public function __construct(
+        string $folder,
+        bool $ignoreCache,
+        private readonly int $thumbnailSize,
+        ?Cache $cache = null,
+    ) {
         $this->folder = rtrim($folder, '/') . '/';
-        $this->thumbnailSize = $thumbnailSize;
         $this->cache = $cache ?? new Cache();
 
         $cached = $ignoreCache ? null : $this->cache->load($this->folder);
@@ -38,11 +40,15 @@ class LocalDirectory
         }
     }
 
+    /** @param array<string> $files */
     public function deleteFiles(array $files, bool &$deletedFolder): void
     {
         $deleted = false;
         foreach ($files as $file) {
             $fullPath = $this->folder . $file;
+            if (is_link($fullPath)) {
+                throw new StorageException('cannot delete the link "' . $file . '"');
+            }
             if (is_dir($fullPath)) {
                 $this->rmdirRecursive($fullPath);
                 $deletedFolder = true;
@@ -114,13 +120,17 @@ class LocalDirectory
         if ($fileInfo->getType() !== 'dir') {
             $realPath = (string)$fileInfo->getRealPath();
             $contentType = (string)mime_content_type($realPath);
-            $isImage = strncmp($contentType, 'image', 5) === 0;
+            $isImage = str_starts_with($contentType, 'image');
             if ($isImage) {
-                $size = getimagesize($realPath);
+                /* not every image/* is a raster one getimagesize() can read - an svg raises a
+                   notice, which with display_errors on lands in the body and breaks the json.
+                   A vector image simply has no pixel size and no thumbnail. */
+                /* @noinspection PhpUsageOfSilenceOperatorInspection */
+                $size = @getimagesize($realPath);
                 if (is_array($size)) {
                     [$imageWidth, $imageHeight] = $size;
+                    $thumbnail = Thumbnail::createThumbnailFromFile($realPath, $this->thumbnailSize);
                 }
-                $thumbnail = Thumbnail::createThumbnailFromFile($realPath, $this->thumbnailSize);
             }
         }
 
@@ -139,7 +149,9 @@ class LocalDirectory
         clearstatcache();
         $this->files = [];
         foreach (new \DirectoryIterator($this->folder) as $fileInfo) {
-            if ($fileInfo->isDot() || $fileInfo->getBasename() === Cache::FILE_NAME) {
+            /* links are not listed at all: the manager would show the target's size and thumbnail
+               under a name inside the storage, and every operation on it would reach outside */
+            if ($fileInfo->isDot() || $fileInfo->isLink() || Utils::isHiddenName($fileInfo->getBasename())) {
                 continue;
             }
             $this->loadFile((string)$fileInfo->getRealPath());
@@ -153,10 +165,14 @@ class LocalDirectory
         }
 
         $deleted = false;
-        if (is_dir($path)) {
+        /* is_dir() follows a link, so a link to a directory used to be descended into and its
+           target emptied - outside the storage, where nothing checks the path */
+        if (is_link($path)) {
+            $deleted = unlink($path);
+        } elseif (is_dir($path)) {
             $files = glob($path . '/{,.}*', GLOB_BRACE | GLOB_NOSORT);
             if (is_array($files)) {
-                array_map([$this, 'rmdirRecursive'], $files);
+                array_map($this->rmdirRecursive(...), $files);
                 $deleted = rmdir($path);
             }
         } else {

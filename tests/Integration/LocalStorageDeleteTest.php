@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
-use Dosiero\File;
-use Dosiero\Folder;
 use Dosiero\Local\LocalDirectory;
 use Dosiero\StorageException;
 
@@ -43,15 +41,11 @@ class LocalStorageDeleteTest extends LocalStorageBase
 
         $itemFile1 = array_filter(
             $responseJson->files,
-            static function (array $file) use ($fileName1) {
-                return $file['name'] === $fileName1;
-            },
+            static fn(array $file) => $file['name'] === $fileName1,
         );
         $itemFile2 = array_filter(
             $responseJson->files,
-            static function (array $file) use ($fileName2) {
-                return $file['name'] === $fileName2;
-            },
+            static fn(array $file) => $file['name'] === $fileName2,
         );
 
         $this->tester->assertCount(0, $itemFile1);
@@ -74,15 +68,11 @@ class LocalStorageDeleteTest extends LocalStorageBase
 
         $itemFolder1 = array_filter(
             $responseJson->files,
-            static function (array $file) use ($folderName1) {
-                return $file['name'] === $folderName1;
-            },
+            static fn(array $file) => $file['name'] === $folderName1,
         );
         $itemFolder2 = array_filter(
             $responseJson->files,
-            static function (array $file) use ($folderName2) {
-                return $file['name'] === $folderName2;
-            },
+            static fn(array $file) => $file['name'] === $folderName2,
         );
 
         $this->tester->assertCount(0, $itemFolder1);
@@ -109,7 +99,7 @@ class LocalStorageDeleteTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new StorageException('cannot delete "' . $fileName . '"'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );

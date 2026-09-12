@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use Rector\CodingStyle\Rector\ClassMethod\NewlineBeforeNewAssignSetRector;
-use Rector\CodingStyle\Rector\Stmt\NewlineAfterStatementRector;
 use Rector\Config\RectorConfig;
 
 return RectorConfig::configure()
@@ -21,9 +19,6 @@ return RectorConfig::configure()
     ->withCodeQualityLevel(0)
     ->withSkip(
         [
-            NewlineAfterStatementRector::class,
-            NewlineBeforeNewAssignSetRector::class,
-            __DIR__ . '/tests/_support/_generated',
             __DIR__ . '/tests/Support/_generated',
             __DIR__ . '/vendor',
         ]

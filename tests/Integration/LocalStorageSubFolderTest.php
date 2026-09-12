@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
-use Dosiero\Folder;
-use Dosiero\Storage;
-
 /**
  * Copy and move used to work only in the root of the storage: absPath() returned
  * the base directory with a trailing slash there, but a sub folder without one,
@@ -15,9 +12,9 @@ use Dosiero\Storage;
  */
 class LocalStorageSubFolderTest extends LocalStorageBase
 {
-    private const SOURCE = 'source';
+    private const string SOURCE = 'source';
 
-    private const TARGET = 'target';
+    private const string TARGET = 'target';
 
     public function testCopyFromSubFolder(): void
     {

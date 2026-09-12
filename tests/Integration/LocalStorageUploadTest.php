@@ -36,9 +36,7 @@ class LocalStorageUploadTest extends LocalStorageBase
         $files = $responseJson->files;
         $itemFile = array_filter(
             $files,
-            static function (array $file) use ($fileName) {
-                return $file['name'] === $fileName;
-            },
+            static fn(array $file) => $file['name'] === $fileName,
         );
         $itemFile = reset($itemFile);
         $this->tester->assertEquals('file', $itemFile['type']);
@@ -112,7 +110,7 @@ class LocalStorageUploadTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new AccessForbiddenException('storage "local1" is read only'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );

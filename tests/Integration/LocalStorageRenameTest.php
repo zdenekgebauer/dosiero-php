@@ -10,6 +10,18 @@ use Dosiero\StorageException;
 
 class LocalStorageRenameTest extends LocalStorageBase
 {
+    /** @return array<string, array<string>> */
+    public static function executableNames(): array
+    {
+        return [
+            'php' => ['evil.php'],
+            'phtml' => ['evil.phtml'],
+            'phar' => ['evil.phar'],
+            'trailing extension wins nothing' => ['evil.php.txt'],
+            'uppercase' => ['evil.PHP'],
+            'htaccess' => ['evil.htaccess'],
+        ];
+    }
     public function testRenameDifferentFolder(): void
     {
         $_GET['storage'] = self::STORAGE_NAME;
@@ -21,7 +33,7 @@ class LocalStorageRenameTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new InvalidRequestException('invalid name "folder/copy-file.txt"'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -46,15 +58,11 @@ class LocalStorageRenameTest extends LocalStorageBase
 
         $itemFile1 = array_filter(
             $responseJson->files,
-            static function (array $file) use ($fileName) {
-                return $file['name'] === $fileName;
-            },
+            static fn(array $file) => $file['name'] === $fileName,
         );
         $itemFile1New = array_filter(
             $responseJson->files,
-            static function (array $file) use ($fileNameNew) {
-                return $file['name'] === $fileNameNew;
-            },
+            static fn(array $file) => $file['name'] === $fileNameNew,
         );
         $this->tester->assertCount(0, $itemFile1);
         $this->tester->assertCount(1, $itemFile1New);
@@ -86,15 +94,11 @@ class LocalStorageRenameTest extends LocalStorageBase
 
         $itemFolder = array_filter(
             $files,
-            static function (array $file) use ($folderName) {
-                return $file['name'] === $folderName;
-            },
+            static fn(array $file) => $file['name'] === $folderName,
         );
         $itemFolderNew = array_filter(
             $files,
-            static function (array $file) use ($folderNameNew) {
-                return $file['name'] === $folderNameNew;
-            },
+            static fn(array $file) => $file['name'] === $folderNameNew,
         );
         $this->tester->assertCount(0, $itemFolder);
         $this->tester->assertCount(1, $itemFolderNew);
@@ -105,6 +109,42 @@ class LocalStorageRenameTest extends LocalStorageBase
         $this->tester->assertTrue(property_exists($responseJson, 'storage'));
         $folders = $responseJson->storage->folders;
         $this->tester->assertEquals($folderNameNew, $folders[0]['name']);
+    }
+
+    public function testRenameFolderToAnExecutableNameIsAllowed(): void
+    {
+        mkdir($this->testDirectory . '/folder');
+
+        $_GET['storage'] = self::STORAGE_NAME;
+        $_GET['action'] = 'rename';
+        $_POST['old'] = 'folder';
+        $_POST['new'] = 'config.ini';
+
+        $responseJson = $this->getConnectorDefault()->handleRequest()->toStdClass();
+
+        // a directory is not served as a script, and the rule is about what the web server executes
+        $this->tester->assertEmpty($responseJson->msg);
+        $this->tester->assertDirectoryExists($this->testDirectory . '/config.ini');
+    }
+
+    /**
+     * The allowlist deliberately does not apply here: files reach the directory by ftp and by hand
+     * too, and those are exactly the ones whose names need repairing.
+     */
+    public function testRenameKeepsAnExtensionOutsideTheAllowlist(): void
+    {
+        $filePath = $this->testDirectory . '/broken name.svg';
+        file_put_contents($filePath, '<svg></svg>');
+
+        $_GET['storage'] = self::STORAGE_NAME;
+        $_GET['action'] = 'rename';
+        $_POST['old'] = 'broken name.svg';
+        $_POST['new'] = 'logo.svg';
+
+        $responseJson = $this->getConnectorDefault()->handleRequest()->toStdClass();
+
+        $this->tester->assertEmpty($responseJson->msg);
+        $this->tester->assertFileExists($this->testDirectory . '/logo.svg');
     }
 
     public function testRenameNotExistingFile(): void
@@ -118,7 +158,7 @@ class LocalStorageRenameTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new StorageException('cannot rename "not-exists.txt" to "copy-file.txt"'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -135,9 +175,35 @@ class LocalStorageRenameTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             new AccessForbiddenException('storage "local1" is read only'),
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
+    }
+
+    /**
+     * The upload rules were never applied to rename, so a file that got in as .txt could be turned
+     * into .php afterwards - the extension allowlist held for the way in and nowhere else.
+     *
+     * @dataProvider executableNames
+     */
+    public function testRenameToExecutableIsRefused(string $newName): void
+    {
+        $filePath = $this->testDirectory . '/innocent.txt';
+        file_put_contents($filePath, 'content');
+
+        $_GET['storage'] = self::STORAGE_NAME;
+        $_GET['action'] = 'rename';
+        $_POST['old'] = 'innocent.txt';
+        $_POST['new'] = $newName;
+
+        $connector = $this->getConnectorDefault();
+        $this->tester->expectThrowable(StorageException::class, static function () use ($connector): void {
+            $connector->handleRequest();
+        });
+
+        // a refusal must leave the original where it was
+        $this->tester->assertFileExists($filePath);
+        $this->tester->assertFileDoesNotExist($this->testDirectory . '/' . $newName);
     }
 }

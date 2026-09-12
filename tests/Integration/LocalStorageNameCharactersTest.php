@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
-use Dosiero\Config;
 use Dosiero\Connector;
-use Dosiero\File;
 use Dosiero\InvalidRequestException;
 use Dosiero\Local\LocalStorage;
 use Dosiero\Storage;
@@ -59,7 +57,7 @@ class LocalStorageNameCharactersTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             InvalidRequestException::class,
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -79,7 +77,7 @@ class LocalStorageNameCharactersTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             InvalidRequestException::class,
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -120,6 +118,32 @@ class LocalStorageNameCharactersTest extends LocalStorageBase
         $this->tester->assertFileExists($this->testDirectory . '/faktura-2026-nova.jpg');
     }
 
+    public function testUploadRefusesHiddenName(): void
+    {
+        $storage = new LocalStorage(self::STORAGE_NAME);
+        $storage->setOption(LocalStorage::OPTION_BASE_DIR, codecept_data_dir('local'));
+        $storage->setOption(Storage::OPTION_BASE_URL, $this->testUrl);
+        $storage->setOption(Storage::OPTION_NORMALIZE_NAMES, false);
+
+        $connector = new Connector($this->createConfig());
+        $connector->addStorage($storage);
+
+        $_GET['storage'] = self::STORAGE_NAME;
+        $_GET['action'] = 'upload';
+        $_FILES = [
+            [
+                'name' => '.htaccess',
+                'type' => 'text/plain',
+                'size' => 100,
+                'tmp_name' => codecept_data_dir('phpunit.jpg'),
+                'error' => 0,
+            ],
+        ];
+
+        $this->tester->assertNotSame('', $connector->handleRequest()->toStdClass()->msg);
+        $this->tester->assertFileNotExists($this->testDirectory . '/.htaccess');
+    }
+
     public function testUploadWithoutNormalizationRefusesHostileCharacters(): void
     {
         $storage = new LocalStorage(self::STORAGE_NAME);
@@ -127,7 +151,7 @@ class LocalStorageNameCharactersTest extends LocalStorageBase
         $storage->setOption(Storage::OPTION_BASE_URL, $this->testUrl);
         $storage->setOption(Storage::OPTION_NORMALIZE_NAMES, false);
 
-        $connector = new Connector(new Config());
+        $connector = new Connector($this->createConfig());
         $connector->addStorage($storage);
 
         $_GET['storage'] = self::STORAGE_NAME;

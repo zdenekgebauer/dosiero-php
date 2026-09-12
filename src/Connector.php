@@ -8,14 +8,21 @@ use function in_array;
 
 class Connector
 {
-    private Config $config;
+    // the header required from client, the value is the protocol version, not a secret
+    public const string PROTOCOL_HEADER = 'X-Dosiero-Protocol';
+
+    public const string PROTOCOL_VERSION = '1';
+
+    private const string ACCESS_DENIED = 'access denied';
+
+    /** @var array<string> actions that change something and therefore need the origin checked */
+    private const array MUTATING_ACTIONS = ['copy', 'delete', 'mkdir', 'move', 'rename', 'upload'];
 
     /** @var array<StorageInterface> */
     private array $storages = [];
 
-    public function __construct(Config $config)
+    public function __construct(private readonly Config $config)
     {
-        $this->config = $config;
     }
 
     public function addStorage(StorageInterface $storage): void
@@ -39,11 +46,7 @@ class Connector
         $response = new Response();
         $response->setFiles($storage->getFiles($request->getPath()));
         if ($copiedFolder) {
-            if ($request->getStorage() === $request->getTargetStorage()) {
-                $response->setStorage($storage);
-            } else {
-                $response->setStorage($targetStorage);
-            }
+            $response->setStorage($storage);
         }
 
         return $response;
@@ -67,47 +70,36 @@ class Connector
 
     public function getStorages(): Response
     {
+        $visible = array_filter(
+            $this->storages,
+            fn(StorageInterface $storage): bool => $this->isAuthorized('files', $storage->getName()),
+        );
+
         $response = new Response();
-        $response->setStorages($this->storages ?: []);
+        $response->setStorages($visible);
         return $response;
     }
 
     public function handleRequest(): Response
     {
         $request = new Request();
+        self::assertProtocolHeader();
         $this->assertValidAccess();
+        $this->assertRequestOrigin($request->getAction());
+        $this->assertAuthorized($request->getAction(), $request->getStorage());
 
-        switch ($request->getAction()) {
-            case 'storages':
-                $response = $this->getStorages();
-                break;
-            case 'files':
-                $response = $this->getFiles($request);
-                break;
-            case 'files-reload':
-                $response = $this->getFiles($request, true);
-                break;
-            case 'mkdir':
-                $response = $this->mkDir($request);
-                break;
-            case 'upload':
-                $response = $this->upload($request);
-                break;
-            case 'rename':
-                $response = $this->rename($request);
-                break;
-            case 'delete':
-                $response = $this->delete($request);
-                break;
-            case 'copy':
-                $response = $this->copy($request);
-                break;
-            case 'move':
-                $response = $this->move($request);
-                break;
-            default:
-                $response = new Response(Response::STATUS_BAD_REQUEST, 'missing or invalid parameter "action"');
-        }
+        $response = match ($request->getAction()) {
+            'storages' => $this->getStorages(),
+            'files' => $this->getFiles($request),
+            'files-reload' => $this->getFiles($request, true),
+            'mkdir' => $this->mkDir($request),
+            'upload' => $this->upload($request),
+            'rename' => $this->rename($request),
+            'delete' => $this->delete($request),
+            'copy' => $this->copy($request),
+            'move' => $this->move($request),
+            default => new Response(Response::STATUS_BAD_REQUEST, 'missing or invalid parameter "action"'),
+        };
         return $response;
     }
 
@@ -146,11 +138,7 @@ class Connector
         $response = new Response();
         $response->setFiles($storage->getFiles($request->getPath()));
         if ($movedFolder) {
-            if ($request->getStorage() === $request->getTargetStorage()) {
-                $response->setStorage($storage);
-            } else {
-                $response->setStorages($this->storages);
-            }
+            $response->setStorage($storage);
         }
 
         return $response;
@@ -179,6 +167,8 @@ class Connector
         $status = Response::STATUS_OK;
         $message = '';
 
+        self::assertRequestBodyReceived();
+
         try {
             $storage->upload($request->getPath(), $request->getUploadedFiles());
         } catch (StorageException $exception) {
@@ -198,8 +188,66 @@ class Connector
         }
     }
 
+    private function assertAuthorized(string $action, string $storage): void
+    {
+        if ($storage !== '' && !$this->isAuthorized($action, $storage)) {
+            throw new AccessForbiddenException(self::ACCESS_DENIED);
+        }
+    }
+
+    private static function assertProtocolHeader(): void
+    {
+        $key = 'HTTP_' . str_replace('-', '_', strtoupper(self::PROTOCOL_HEADER));
+        $sent = $_SERVER[$key] ?? '';
+        if (!is_string($sent) || $sent === '') {
+            throw new AccessForbiddenException(self::ACCESS_DENIED);
+        }
+    }
+
+    // upload of file >= post_max_size discards $_POST and $_FILES entirely and reports nothing
+    private static function assertRequestBodyReceived(): void
+    {
+        $postMaxSize = Utils::iniBytes('post_max_size');
+        $contentLength = isset($_SERVER['CONTENT_LENGTH']) && is_numeric($_SERVER['CONTENT_LENGTH'])
+            ? (int)$_SERVER['CONTENT_LENGTH']
+            : 0;
+
+        if ($postMaxSize > 0 && $contentLength > $postMaxSize && $_FILES === [] && $_POST === []) {
+            throw new InvalidRequestException(
+                'uploaded data of ' . $contentLength . ' bytes exceeds the post_max_size limit of '
+                . $postMaxSize . ' bytes',
+            );
+        }
+    }
+
+    /** Sec-Fetch-Site and Origin are filled in by the browser. Absence means old browser or a "not bowser" client. */
+    private function assertRequestOrigin(string $action): void
+    {
+        if (!in_array($action, self::MUTATING_ACTIONS, true)) {
+            return;
+        }
+
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $origin = is_string($origin) ? $origin : '';
+        if ($origin !== '' && !self::isOwnOrigin($origin) && !$this->config->isOriginAllowed($origin)) {
+            throw new AccessForbiddenException(self::ACCESS_DENIED);
+        }
+
+        $site = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+        $site = is_string($site) ? $site : '';
+        if (($site === 'cross-site' || $site === 'none') && !$this->config->isOriginAllowed($origin)) {
+            throw new AccessForbiddenException(self::ACCESS_DENIED);
+        }
+    }
+
     private function assertValidAccess(): void
     {
+        if (!$this->config->isConfigured()) {
+            throw new AccessForbiddenException(
+                'no access control configured - set one on Config, or call allowAnonymous() to serve everybody',
+            );
+        }
+
         $sessionName = $this->config->getSessionName();
         $sessionValue = $this->config->getSessionValue();
         $allowedIp = $this->config->getAllowedIp();
@@ -208,34 +256,31 @@ class Connector
 
         if ($basicAuthUser !== '' || $basicAuthPassword !== '') {
             if (!isset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'])) {
-                throw new AccessForbiddenException('missing required basic auth');
+                throw new AccessForbiddenException(self::ACCESS_DENIED);
             }
             $user = is_string($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : '';
             $password = is_string($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
             $validUser = hash_equals($basicAuthUser, $user);
             $validPassword = hash_equals($basicAuthPassword, $password);
             if (!$validUser || !$validPassword) {
-                throw new AccessForbiddenException('invalid basic authentication');
+                throw new AccessForbiddenException(self::ACCESS_DENIED);
             }
         }
 
         if ($sessionName !== '') {
             // $_SESSION exists only after session_start(), but may also be populated directly
             if (session_status() !== PHP_SESSION_ACTIVE && !isset($_SESSION)) {
-                throw new AccessForbiddenException('session is required but was not started');
+                throw new AccessForbiddenException(self::ACCESS_DENIED);
             }
             if (!isset($_SESSION[$sessionName])) {
-                throw new AccessForbiddenException('missing required session variable');
+                throw new AccessForbiddenException(self::ACCESS_DENIED);
             }
             if ($sessionValue !== '' && $_SESSION[$sessionName] !== $sessionValue) {
-                throw new AccessForbiddenException('missing or invalid value of required session variable');
+                throw new AccessForbiddenException(self::ACCESS_DENIED);
             }
         }
-        if (
-            !empty($allowedIp)
-            && (!isset($_SERVER['REMOTE_ADDR']) || !in_array($_SERVER['REMOTE_ADDR'], $allowedIp, true))
-        ) {
-            throw new AccessForbiddenException('access from your IP is not allowed');
+        if ($allowedIp !== [] && !self::isAllowedIp($allowedIp)) {
+            throw new AccessForbiddenException(self::ACCESS_DENIED);
         }
     }
 
@@ -254,5 +299,36 @@ class Connector
             throw new InvalidRequestException('not found storage "' . $storageName . '"');
         }
         return $this->storages[$storageName];
+    }
+
+    /** @param array<string> $allowedIp */
+    private static function isAllowedIp(array $allowedIp): bool
+    {
+        $address = $_SERVER['REMOTE_ADDR'] ?? '';
+        if (!is_string($address) || $address === '') {
+            return false;
+        }
+        foreach ($allowedIp as $range) {
+            if (Utils::ipMatchesRange($address, $range)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function isAuthorized(string $action, string $storage): bool
+    {
+        $authorization = $this->config->getAuthorization();
+        return $authorization === null || $authorization($action, $storage) === true;
+    }
+
+    private static function isOwnOrigin(string $origin): bool
+    {
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if (!is_string($host) || $host === '') {
+            return false;
+        }
+        $scheme = isset($_SERVER['HTTPS']) ? 'https' : 'http';
+        return rtrim($origin, '/') === $scheme . '://' . $host;
     }
 }

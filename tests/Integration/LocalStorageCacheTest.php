@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use Dosiero\Cache;
-use Dosiero\Config;
 use Dosiero\Connector;
 use Dosiero\Local\LocalStorage;
 use Dosiero\Storage;
@@ -62,8 +61,8 @@ class LocalStorageCacheTest extends LocalStorageBase
 
     public function testExpiredEntriesAreRemoved(): void
     {
-        $expired = $this->cacheDirectory . '/expired.json';
-        $fresh = $this->cacheDirectory . '/fresh.json';
+        $expired = $this->cacheDirectory . '/' . sha1('expired') . '.json';
+        $fresh = $this->cacheDirectory . '/' . sha1('fresh') . '.json';
         file_put_contents($expired, '{}');
         file_put_contents($fresh, '{}');
         touch($expired, time() - 7201);
@@ -74,7 +73,25 @@ class LocalStorageCacheTest extends LocalStorageBase
         $this->tester->assertFileExists($fresh);
     }
 
-    /** The FTP implementation this class grew from mapped both onto the same file. */
+    public function testOnlyOwnEntriesAreRemoved(): void
+    {
+        $foreign = $this->cacheDirectory . '/unrelated.txt';
+        $foreignJson = $this->cacheDirectory . '/settings.json';
+        $almostOwn = $this->cacheDirectory . '/' . sha1('own') . '.json.bak';
+        $own = $this->cacheDirectory . '/' . sha1('own') . '.json';
+        foreach ([$foreign, $foreignJson, $almostOwn, $own] as $file) {
+            file_put_contents($file, '{}');
+            touch($file, time() - 7201);
+        }
+
+        (new Cache(true, $this->cacheDirectory))->cleanExpired();
+
+        $this->tester->assertFileExists($foreign);
+        $this->tester->assertFileExists($foreignJson);
+        $this->tester->assertFileExists($almostOwn);
+        $this->tester->assertFileDoesNotExist($own);
+    }
+
     public function testSimilarPathsDoNotShareCacheFile(): void
     {
         mkdir($this->testDirectory . '/a/b', 0o777, true);
@@ -135,7 +152,7 @@ class LocalStorageCacheTest extends LocalStorageBase
             $storage->setOption($name, $value);
         }
 
-        $connector = new Connector(new Config());
+        $connector = new Connector($this->createConfig());
         $connector->addStorage($storage);
         return $connector;
     }

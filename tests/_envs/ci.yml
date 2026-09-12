@@ -1,0 +1,7 @@
+# Start the server first: php -S 127.0.0.1:8080 -t tests/Support/Endpoint
+modules:
+  config:
+    PhpBrowser:
+      url: 'http://127.0.0.1:8080/'
+    REST:
+      url: 'http://127.0.0.1:8080/'

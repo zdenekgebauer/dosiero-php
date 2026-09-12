@@ -1,9 +1,16 @@
 actor: ApiTester
 modules:
   enabled:
-    - \Tests\Support\Helper\Api
     - Asserts
     - REST:
-        url: https://dosiero-php.local/
+        # the committed entry point, not the gitignored /index.php playground - see
+        # tests/Support/Endpoint/index.php. CI serves the same file with php -S, see --env ci
+        url: https://dosiero-php.local/tests/Support/Endpoint/
         depends: PhpBrowser
         part: Json
+    # after REST on purpose: its own _before resets the headers, so ours has to run later
+    - \Tests\Support\Helper\Api
+
+# coverage here, it runs against http server
+coverage:
+    enabled: false

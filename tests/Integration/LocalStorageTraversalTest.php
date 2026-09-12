@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
-use Dosiero\Folder;
 use Dosiero\InvalidRequestException;
 use Dosiero\StorageException;
 
@@ -39,7 +38,7 @@ class LocalStorageTraversalTest extends LocalStorageBase
 
         try {
             $connector->handleRequest();
-        } catch (\Throwable $exception) {
+        } catch (\Throwable) {
             // refusing with an exception is the expected behaviour
         }
 
@@ -60,7 +59,7 @@ class LocalStorageTraversalTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             StorageException::class,
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -76,7 +75,7 @@ class LocalStorageTraversalTest extends LocalStorageBase
 
         $this->tester->expectThrowable(
             InvalidRequestException::class,
-            static function () use ($connector) {
+            static function () use ($connector): void {
                 $connector->handleRequest();
             },
         );
@@ -95,7 +94,7 @@ class LocalStorageTraversalTest extends LocalStorageBase
 
         try {
             $connector->handleRequest();
-        } catch (\Throwable $exception) {
+        } catch (\Throwable) {
             // refusing with an exception is the expected behaviour
         }
 
@@ -121,7 +120,7 @@ class LocalStorageTraversalTest extends LocalStorageBase
 
         try {
             $connector->handleRequest();
-        } catch (\Throwable $exception) {
+        } catch (\Throwable) {
             // refusing with an exception is the expected behaviour
         }
 

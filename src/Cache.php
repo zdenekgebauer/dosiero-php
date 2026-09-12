@@ -4,29 +4,27 @@ declare(strict_types=1);
 
 namespace Dosiero;
 
+use function dirname;
 use function is_array;
 
 class Cache
 {
     /** Legacy name, kept so existing installations do not lose their cache. */
-    public const FILE_NAME = '.htdircache';
+    public const string FILE_NAME = '.htdircache';
 
-    private const CLEAN_PROBABILITY = 50;
+    private const int CLEAN_PROBABILITY = 50;
 
     /** Only catches edits in place - those leave the directory mtime untouched. */
-    private const TTL = 7200;
+    private const int TTL = 7200;
 
-    private string $cacheDirectory;
+    private readonly string $cacheDirectory;
 
-    private bool $enabled;
-
-    private string $namespace;
-
-    public function __construct(bool $enabled = true, string $cacheDirectory = '', string $namespace = '')
-    {
-        $this->enabled = $enabled;
+    public function __construct(
+        private readonly bool $enabled = true,
+        string $cacheDirectory = '',
+        private readonly string $namespace = '',
+    ) {
         $this->cacheDirectory = $cacheDirectory === '' ? '' : rtrim($cacheDirectory, '/') . '/';
-        $this->namespace = $namespace;
     }
 
     /** A file next to the data dies with it, so only an external directory needs sweeping. */
@@ -38,7 +36,12 @@ class Cache
 
         $limit = time() - self::TTL;
         foreach (new \DirectoryIterator($this->cacheDirectory) as $fileInfo) {
-            if ($fileInfo->isFile() && $fileInfo->getMTime() < $limit) {
+            /* only entries this class wrote: the directory may be one the integrator also keeps
+               other things in, and sweeping it by age alone deleted them. A link is never ours. */
+            if ($fileInfo->isLink() || !$fileInfo->isFile() || !self::isOwnEntry($fileInfo->getFilename())) {
+                continue;
+            }
+            if ($fileInfo->getMTime() < $limit) {
                 /* @noinspection PhpUsageOfSilenceOperatorInspection */
                 @unlink((string)$fileInfo->getRealPath());
             }
@@ -85,12 +88,7 @@ class Cache
         return $result;
     }
 
-    /**
-     * Silent no-op on an unwritable target: a read-only data directory must not
-     * emit a warning on every request.
-     *
-     * @param array<string, FileInterface> $files
-     */
+    /** @param array<string, FileInterface> $files */
     public function save(string $directory, array $files): void
     {
         if (!$this->enabled) {
@@ -111,8 +109,6 @@ class Cache
         $mtime = self::directoryMtime($directory);
         file_put_contents($cacheFile, self::encode($mtime, $serialized));
 
-        // creating the file inside the listed directory bumps its mtime, which
-        // would make the entry just written look stale
         $mtimeAfter = self::directoryMtime($directory);
         if ($mtimeAfter !== $mtime) {
             file_put_contents($cacheFile, self::encode($mtimeAfter, $serialized));
@@ -149,6 +145,12 @@ class Cache
     private static function encode(?int $mtime, array $files): string
     {
         return json_encode(['mtime' => $mtime, 'files' => $files], JSON_THROW_ON_ERROR);
+    }
+
+    /** Cache files are sha1 hashes; anything else in the directory belongs to somebody else. */
+    private static function isOwnEntry(string $fileName): bool
+    {
+        return preg_match('/^[0-9a-f]{40}\.json$/', $fileName) === 1;
     }
 
     private static function isWritable(string $cacheFile): bool

@@ -6,11 +6,11 @@ namespace Dosiero;
 
 class File implements FileInterface
 {
-    public const TYPE_DIR = 'dir';
+    public const string TYPE_DIR = 'dir';
 
-    public const TYPE_FILE = 'file';
+    public const string TYPE_FILE = 'file';
 
-    public const TYPE_LINK = 'link';
+    public const string TYPE_LINK = 'link';
 
     protected string $directoryUrl = '';
 
@@ -18,21 +18,17 @@ class File implements FileInterface
 
     protected string $modified = '';
 
-    protected string $name;
-
     protected ?string $thumbnail = null;
-
-    /** @var string dir|file|link */
-    protected string $type;
 
     protected ?int $width = null;
 
     private int $size = 0;
 
-    public function __construct(string $name, string $type)
-    {
-        $this->name = $name;
-        $this->type = $type;
+    public function __construct(
+        protected string $name,
+        /** @var string dir|file|link */
+        protected string $type,
+    ) {
     }
 
     public function getHeight(): ?int
