@@ -73,6 +73,22 @@ class LocalStorageCacheTest extends LocalStorageBase
         $this->tester->assertFileExists($fresh);
     }
 
+    /** A newly created entry used to be appended last, wherever its name belongs. */
+    public function testNewFolderIsOrderedByName(): void
+    {
+        file_put_contents($this->testDirectory . '/zulu.txt', '');
+
+        $_GET['storage'] = self::STORAGE_NAME;
+        $_GET['action'] = 'mkdir';
+        $_POST['folder'] = 'alpha';
+
+        $response = $this->getConnector([Storage::OPTION_CACHE_DIRECTORY => $this->cacheDirectory])
+            ->handleRequest()
+            ->toStdClass();
+
+        $this->tester->assertSame(['alpha', 'zulu.txt'], array_column($response->files, 'name'));
+    }
+
     public function testOnlyOwnEntriesAreRemoved(): void
     {
         $foreign = $this->cacheDirectory . '/unrelated.txt';
@@ -90,6 +106,25 @@ class LocalStorageCacheTest extends LocalStorageBase
         $this->tester->assertFileExists($foreignJson);
         $this->tester->assertFileExists($almostOwn);
         $this->tester->assertFileDoesNotExist($own);
+    }
+
+    /**
+     * The listing used to come back in DirectoryIterator order when it was fresh and in sorted
+     * order when it came from the cache - stable per filesystem, so it passed on a bind mount and
+     * failed on ext4, where the order is by hash.
+     */
+    public function testOrderIsTheSameWarmAndCold(): void
+    {
+        foreach (['zulu.txt', 'alpha.txt', 'mike.txt', 'bravo.txt'] as $name) {
+            file_put_contents($this->testDirectory . '/' . $name, '');
+        }
+        $connector = $this->getConnector([Storage::OPTION_CACHE_DIRECTORY => $this->cacheDirectory]);
+
+        $cold = array_column($this->listFiles($connector), 'name');
+        $warm = array_column($this->listFiles($connector), 'name');
+
+        $this->tester->assertSame($cold, $warm, 'a cached listing is ordered differently than a fresh one');
+        $this->tester->assertSame(['alpha.txt', 'bravo.txt', 'mike.txt', 'zulu.txt'], $cold);
     }
 
     public function testSimilarPathsDoNotShareCacheFile(): void

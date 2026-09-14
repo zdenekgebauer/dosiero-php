@@ -75,6 +75,12 @@ class LocalDirectory
      */
     public function getFiles(): iterable
     {
+        /* Sorted here rather than left to the filesystem, because otherwise the same folder comes
+           back in three different orders: DirectoryIterator order when the listing is fresh, sorted
+           when it is served from the cache (Cache::save() ksorts), and with the new entry last
+           after a mkdir or a rename. DirectoryIterator order is stable per filesystem, which is why
+           it looked fine on a bind mount and only broke on ext4. */
+        ksort($this->files);
         return $this->files;
     }
 

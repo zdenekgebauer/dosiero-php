@@ -136,6 +136,11 @@ deliberately conservative and some of them will refuse uploads that used to go t
   file in silence whatever it was set to, and the return values of `copy()` and `rename()` were not
   checked, so a failed write was reported as a success. Both are fixed; a collision is reported
   before the first change rather than halfway through the batch.
+- **A folder came back in three different orders.** `DirectoryIterator` order when the listing was
+  fresh, sorted when it came from the cache (which ksorts as it writes), and with the new entry
+  appended last after a `mkdir` or a `rename`. Listings are now sorted by name on every path.
+  Filesystem order is stable per filesystem, which is why this only showed on ext4 and never on a
+  development bind mount.
 - **An SVG in a listed folder raised a PHP notice on every listing.** `mime_content_type()` reports
   `image/svg+xml`, which the listing took for a raster image and passed to `getimagesize()`. With
   `display_errors` on, the notice landed in the response body and broke the JSON — the same way the
