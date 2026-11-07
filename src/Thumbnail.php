@@ -85,14 +85,8 @@ class Thumbnail
             }
         }
         if ($ext === 'png') {
-            // temporarily turn off transparency blending
+            // without blending imagecopyresampled() overwrites every pixel, alpha channel included
             imagealphablending($imgThumb, false);
-            imagesavealpha($imgThumb, true);
-            // create a new transparent color for image
-            $transparent = (int)imagecolorallocatealpha($imgThumb, 0, 0, 0, 127);
-            // fill the background of the new image with allocated color
-            imagefilledrectangle($imgThumb, 0, 0, $thumbWidth, $thumbHeight, $transparent);
-            // restore transparency blending
             imagesavealpha($imgThumb, true);
         }
 

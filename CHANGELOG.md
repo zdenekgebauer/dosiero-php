@@ -2,6 +2,20 @@
 
 Notable changes per release. Versioning follows [semver](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`Response::getHeaders()` and `Response::getPreflightHeaders()`** list the headers
+  `sendOutput()` and `sendPreflight()` send, so a framework controller can pass the CORS headers on
+  as well as the status and the payload.
+
+### Fixed
+
+- **The session check no longer needs `ext-session`.** It called `session_status()` without the
+  extension being declared, so an installation lacking it ended every request in a fatal error once
+  `requireSession()` was configured. The call was redundant and is gone.
+
 ## [1.0.0] — 2026-09-13
 
 The first release that can be trusted with a public directory. Every request path was reachable

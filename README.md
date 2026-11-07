@@ -108,7 +108,9 @@ final class FilesController
 ```
 
 `getHttpStatus()` and `toStdClass()` are there for exactly this: the same outcome `sendOutput()`
-would have produced, as values you can put into a response of your own.
+would have produced, as values you can put into a response of your own. `getHeaders()` adds the
+headers it would have sent — the CORS ones included, which a client served from another origin
+cannot do without — and `getPreflightHeaders()` does the same for `sendPreflight()`.
 
 Points worth getting right:
 
@@ -503,6 +505,8 @@ lando ecs-fix && lando ecs          # coding standard
 lando phpstan                       # level max, strict + deprecation rules
 lando rector                        # dry run
 lando coverage                      # xdebug on for this one command
+lando dependency-analyser           # composer.json against usage in src/
+lando infection                     # mutation testing, report in build/reports/
 ```
 
 The `Api` suite drives the connector over real HTTP, which is the only place the CORS and

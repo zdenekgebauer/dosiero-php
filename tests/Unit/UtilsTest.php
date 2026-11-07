@@ -23,10 +23,13 @@ class UtilsTest extends Unit
             'inside a partial-byte range' => ['192.168.1.10', '192.168.1.0/28', true],
             'outside a partial-byte range' => ['192.168.1.30', '192.168.1.0/28', false],
             'zero prefix takes everything' => ['8.8.8.8', '0.0.0.0/0', true],
+            'odd prefix compares the last bit' => ['10.0.0.1', '10.0.0.0/31', true],
+            'odd prefix refuses the next pair' => ['10.0.0.2', '10.0.0.0/31', false],
             'ipv6 inside' => ['2001:db8::1', '2001:db8::/32', true],
             'ipv6 outside' => ['2001:dbf::1', '2001:db8::/32', false],
             'ipv6 shorthand equals long form' => ['::1', '0:0:0:0:0:0:0:1', true],
             'ipv4 never matches an ipv6 range' => ['127.0.0.1', '::1/128', false],
+            'ipv4 never matches even the widest ipv6 range' => ['127.0.0.1', '::/0', false],
             'nonsense address never matches' => ['not-an-address', '10.0.0.0/8', false],
         ];
     }
@@ -135,12 +138,19 @@ class UtilsTest extends Unit
 
     public function testNormalizeIpRangeRefusesNonsense(): void
     {
-        $this->tester->expectThrowable(
-            new \InvalidArgumentException('invalid IP range "10.0.0.0/x"'),
-            static function (): void {
-                Utils::normalizeIpRange('10.0.0.0/x');
-            },
-        );
+        foreach (['10.0.0.0/x', '10.0.0.0/8/1', '10.0.0.0/33', '::/129'] as $range) {
+            $this->tester->expectThrowable(
+                new \InvalidArgumentException('invalid IP range "' . $range . '"'),
+                static function () use ($range): void {
+                    Utils::normalizeIpRange($range);
+                },
+            );
+        }
+    }
+
+    public function testNormalizeIpRangeWritesThePrefixAsANumber(): void
+    {
+        $this->tester->assertSame('10.0.0.0/8', Utils::normalizeIpRange('10.0.0.0/08'));
     }
 
     /** @dataProvider providerBytes */

@@ -15,6 +15,7 @@ Thumbs.db
 /tests/*.suite.yml
 /tests/_envs/local.yml
 /tests/_output/*
+/tests/Support/Data/local/
 /tests/Support/_generated/*
 /vendor/
 

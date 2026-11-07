@@ -62,6 +62,16 @@ class ConfigTest extends Unit
         );
     }
 
+    // the origin a browser sends never carries the slash or the spaces a configuration might
+    public function testCredentialsAreLookedUpByTheNormalizedOrigin(): void
+    {
+        $config = new Config();
+        $config->allowOrigin(' https://app.example.org/ ', true);
+
+        $this->tester->assertSame(['https://app.example.org'], $config->getAllowedOrigins());
+        $this->tester->assertTrue($config->isCredentialsAllowed(' https://app.example.org/ '));
+    }
+
     // a browser refuses Access-Control-Allow-Origin: * for a request carrying credentials
     public function testCredentialsRequireANamedOrigin(): void
     {

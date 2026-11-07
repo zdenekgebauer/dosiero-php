@@ -93,6 +93,23 @@ class AccessTest extends Unit
         $this->tester->assertEmpty($connector->handleRequest()->toStdClass()->msg);
     }
 
+    // REMOTE_ADDR is whatever the server put there, and only a string can be an address
+    public function testCheckIpRefusesANonStringAddress(): void
+    {
+        $config = new Config();
+        $config->setAllowedIp(['127.0.0.0/8']);
+        $connector = new Connector($config);
+        $_SERVER['REMOTE_ADDR'] = 2130706433;
+        $_GET['action'] = 'storages';
+
+        $this->tester->expectThrowable(
+            new AccessForbiddenException('access denied'),
+            static function () use ($connector): void {
+                $connector->handleRequest();
+            },
+        );
+    }
+
     public function testCheckSession(): void
     {
         $config = new Config();
@@ -124,6 +141,22 @@ class AccessTest extends Unit
                 $connector->handleRequest();
             },
         );
+
+        $_GET['action'] = 'storages';
+        $_SESSION['custom_session_name'] = 'custom_session_name';
+        $this->tester->assertEmpty($connector->handleRequest()->toStdClass()->msg);
+    }
+
+    // an empty required value means the key only has to be there, whatever it holds
+    public function testCheckSessionKeyOnly(): void
+    {
+        $config = new Config();
+        $config->requireSession('custom_session_name', '');
+        $connector = new Connector($config);
+        $_GET['action'] = 'storages';
+        $_SESSION['custom_session_name'] = 'anything';
+
+        $this->tester->assertEmpty($connector->handleRequest()->toStdClass()->msg);
     }
 
     public function testUnconfiguredConnectorRefusesEverything(): void
@@ -141,7 +174,13 @@ class AccessTest extends Unit
 
     protected function _after()
     {
-        unset($_SESSION, $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'], $_SERVER['HTTP_X_DOSIERO_PROTOCOL']);
+        unset(
+            $_SESSION,
+            $_SERVER['HTTP_X_DOSIERO_PROTOCOL'],
+            $_SERVER['PHP_AUTH_PW'],
+            $_SERVER['PHP_AUTH_USER'],
+            $_SERVER['REMOTE_ADDR'],
+        );
     }
 
     protected function _before()

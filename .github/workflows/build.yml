@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: composer update --prefer-dist --no-progress
 
+      - name: Dependencies against usage (composer-dependency-analyser)
+        run: vendor/bin/composer-dependency-analyser
+
       - name: Coding standards (ECS)
         run: vendor/bin/ecs check --no-progress-bar
 

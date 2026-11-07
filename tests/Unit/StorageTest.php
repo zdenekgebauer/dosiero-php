@@ -73,4 +73,20 @@ class StorageTest extends Unit
             },
         );
     }
+
+    // setOption() takes the size as a string as well, so it must end up an int
+    public function testThumbnailSizeHasAFloor(): void
+    {
+        $storage = new class('base') extends Storage {
+            public function thumbnailSize(): int
+            {
+                return $this->thumbnailSize;
+            }
+        };
+
+        foreach ([[5, 10], [9, 10], [10, 10], [11, 11], ['80', 80]] as [$value, $expected]) {
+            $storage->setOption(Storage::OPTION_THUMBNAIL_SIZE, $value);
+            $this->tester->assertSame($expected, $storage->thumbnailSize());
+        }
+    }
 }

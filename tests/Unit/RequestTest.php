@@ -35,14 +35,15 @@ class RequestTest extends Unit
         $this->tester->assertSame([], (new Request())->getSelectedFiles());
     }
 
-    // PHP fills in five scalar keys for a file input; anything else cannot be an upload
+    // PHP fills in five scalar keys for a file input; anything else cannot be an upload, and it
+    // must not hide the uploads that follow it
     public function testUploadedFilesDropsEntriesThatAreNotUploads(): void
     {
         $_FILES = [
-            'good' => ['name' => 'a.txt', 'type' => 'text/plain', 'tmp_name' => '/tmp/a', 'error' => 0, 'size' => 3],
             'notAnArray' => 'nonsense',
             'multiFile' => ['name' => ['a.txt', 'b.txt'], 'tmp_name' => ['/tmp/a', '/tmp/b'], 'error' => [0, 0]],
             'missingError' => ['name' => 'c.txt', 'tmp_name' => '/tmp/c'],
+            'good' => ['name' => 'a.txt', 'type' => 'text/plain', 'tmp_name' => '/tmp/a', 'error' => 0, 'size' => 3],
         ];
 
         $uploads = (new Request())->getUploadedFiles();

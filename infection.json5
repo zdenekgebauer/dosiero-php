@@ -1,0 +1,68 @@
+{
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": [
+            "src"
+        ]
+    },
+    "testFramework": "codeception",
+    // the Api suite runs the connector over http, outside the process Infection mutates
+    "testFrameworkOptions": "Unit,Integration",
+    "tmpDir": "build/cache/infection",
+    "logs": {
+        "text": "build/reports/infection.txt",
+        "html": "build/reports/infection.html",
+        "summary": "build/reports/infection-summary.txt"
+    },
+    "minMsi": 100,
+    "minCoveredMsi": 100,
+    // every ignore below is an equivalent mutant, the behaviour stays the same; a "::line" suffix
+    // marks a statement no regex can tell apart from its neighbours, so it moves with the code
+    "mutators": {
+        "@default": true,
+        // header() records nothing under the cli sapi, the tests assert on getHeaders() instead
+        "global-ignore": [
+            "Dosiero\\Response::sendHeaders"
+        ],
+        "DecrementInteger": {
+            "ignore": [
+                // the mask never has its lowest bit set, so 0xFF and 254 cut the same bits
+                "Dosiero\\Utils::ipMatchesRange::72"
+            ]
+        },
+        "FalseValue": {
+            "ignore": [
+                // what getimagesize() cannot read, imagecreatefromstring() cannot decode either
+                "Dosiero\\Thumbnail::isWithinPixelLimit::133"
+            ]
+        },
+        "GreaterThan": {
+            "ignoreSourceCodeByRegex": [
+                // strncmp() of zero bytes is 0, so the comparison is skipped either way
+                ".*\\$wholeBytes > 0.*"
+            ]
+        },
+        "IncrementInteger": {
+            "ignoreSourceCodeByRegex": [
+                // the range comes from normalizeIpRange(), which leaves a single slash in it
+                ".*explode\\('/', \\$range, 2\\).*",
+                // a flood fill of a blank canvas covers it all from any starting pixel
+                ".*imagefill\\(\\$imgThumb.*"
+            ]
+        },
+        "MethodCallRemoval": {
+            "ignore": [
+                "Dosiero\\Response::sendOutput",
+                "Dosiero\\Response::sendPreflight"
+            ]
+        },
+        "ReturnRemoval": {
+            "ignore": [
+                // imagecreatefromstring('') returns false, which ends in the same empty string
+                "Dosiero\\Thumbnail::createThumbnailFromString::31",
+                // isValidFileName() refuses "", "." and ".." on its own
+                "Dosiero\\Utils::isValidFolderName::104"
+            ]
+        }
+    }
+}

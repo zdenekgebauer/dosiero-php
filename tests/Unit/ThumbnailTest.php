@@ -42,25 +42,31 @@ class ThumbnailTest extends Unit
     // the branch where nothing is scaled down, and the one where the image is taller than it is wide
     public function testCreateThumbnailKeepsSmallImageAndHandlesPortrait(): void
     {
-        $small = imagecreatetruecolor(20, 10);
-        ob_start();
-        imagepng($small);
-        $smallData = (string)ob_get_clean();
-
-        $portrait = imagecreatetruecolor(40, 200);
-        ob_start();
-        imagepng($portrait);
-        $portraitData = (string)ob_get_clean();
-
-        foreach ([$smallData, $portraitData] as $data) {
-            $thumbnail = Thumbnail::createThumbnailFromString($data, 'png');
-            $this->tester->assertStringStartsWith('data:image/png;base64,', $thumbnail);
-            $decoded = (string)base64_decode(substr($thumbnail, strlen('data:image/png;base64,')), true);
-            $size = getimagesizefromstring($decoded);
-            $this->tester->assertNotFalse($size);
-            $this->tester->assertLessThanOrEqual(50, $size[0]);
-            $this->tester->assertLessThanOrEqual(50, $size[1]);
+        foreach ([[20, 10, 20, 10], [40, 200, 10, 50]] as [$width, $height, $thumbWidth, $thumbHeight]) {
+            $thumbnail = self::decode(
+                Thumbnail::createThumbnailFromString(self::png(imagecreatetruecolor($width, $height)), 'png'),
+                'png',
+            );
+            $this->tester->assertSame([$thumbWidth, $thumbHeight], [imagesx($thumbnail), imagesy($thumbnail)]);
         }
+    }
+
+    // the transparent colour of a palette image is often index 0, the first one allocated
+    public function testGifKeepsItsTransparentColour(): void
+    {
+        $image = imagecreate(100, 100);
+        $transparent = (int)imagecolorallocate($image, 255, 0, 255);
+        imagecolortransparent($image, $transparent);
+        imagefilledrectangle($image, 40, 40, 60, 60, (int)imagecolorallocate($image, 0, 0, 0));
+        ob_start();
+        imagegif($image);
+        $data = (string)ob_get_clean();
+
+        $thumbnail = self::decode(Thumbnail::createThumbnailFromString($data, 'gif'), 'gif');
+
+        $thumbTransparent = imagecolortransparent($thumbnail);
+        $this->tester->assertGreaterThanOrEqual(0, $thumbTransparent);
+        $this->tester->assertSame($thumbTransparent, imagecolorat($thumbnail, 0, 0));
     }
 
     /**
@@ -88,6 +94,46 @@ class ThumbnailTest extends Unit
             'data:image/png;base64,',
             Thumbnail::createThumbnailFromFile(codecept_data_dir('phpunit.png')),
         );
+    }
+
+    public function testPngKeepsItsAlphaChannel(): void
+    {
+        $image = imagecreatetruecolor(100, 100);
+        imagealphablending($image, false);
+        imagefilledrectangle($image, 0, 0, 99, 99, (int)imagecolorallocatealpha($image, 0, 0, 0, 127));
+        imagefilledrectangle($image, 40, 40, 60, 60, (int)imagecolorallocate($image, 255, 0, 0));
+        imagesavealpha($image, true);
+
+        $thumbnail = self::decode(Thumbnail::createThumbnailFromString(self::png($image), 'png'), 'png');
+
+        $this->tester->assertSame(127, (imagecolorat($thumbnail, 0, 0) >> 24) & 0x7F);
+    }
+
+    // decodable, and cheap to decode, but beyond the dimension a thumbnail is ever made from
+    public function testTooWideImageIsRefused(): void
+    {
+        $file = codecept_output_dir('wide.png');
+        file_put_contents($file, self::png(imagecreatetruecolor(50_001, 1)));
+
+        $this->tester->assertSame('', Thumbnail::createThumbnailFromFile($file));
+
+        unlink($file);
+    }
+
+    private static function decode(string $thumbnail, string $ext): \GdImage
+    {
+        $prefix = 'data:image/' . $ext . ';base64,';
+        self::assertStringStartsWith($prefix, $thumbnail);
+        $image = imagecreatefromstring((string)base64_decode(substr($thumbnail, strlen($prefix)), true));
+        self::assertNotFalse($image);
+        return $image;
+    }
+
+    private static function png(\GdImage $image): string
+    {
+        ob_start();
+        imagepng($image);
+        return (string)ob_get_clean();
     }
 
     private static function pngWithDeclaredSize(int $width, int $height): string

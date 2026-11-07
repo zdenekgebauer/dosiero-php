@@ -30,6 +30,17 @@ tooling:
     composer:
         service: appserver
         dir: /app
+    dependency-analyser:
+        service: appserver
+        description: composer.json dependencies against their usage in code (composer-dependency-analyser)
+        dir: /app
+        cmd: php /app/vendor/bin/composer-dependency-analyser
+    infection:
+        service: appserver
+        description: mutation testing (Infection), details in build/reports/infection.txt
+        dir: /app
+        # one thread: the Integration tests share tests/Support/Data/local
+        cmd: XDEBUG_MODE=coverage php /app/vendor/bin/infection --threads=1 --no-progress --show-mutations=0
     phpstan:
         service: appserver
         description: static analysis (PHPStan)

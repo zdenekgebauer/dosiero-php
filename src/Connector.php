@@ -268,10 +268,7 @@ class Connector
         }
 
         if ($sessionName !== '') {
-            // $_SESSION exists only after session_start(), but may also be populated directly
-            if (session_status() !== PHP_SESSION_ACTIVE && !isset($_SESSION)) {
-                throw new AccessForbiddenException(self::ACCESS_DENIED);
-            }
+            // also refuses a $_SESSION that does not exist, i.e. a session that was never started
             if (!isset($_SESSION[$sessionName])) {
                 throw new AccessForbiddenException(self::ACCESS_DENIED);
             }
