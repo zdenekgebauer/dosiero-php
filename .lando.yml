@@ -76,5 +76,7 @@ tooling:
         dir: /app
         cmd: XDEBUG_MODE=coverage /app/vendor/bin/codecept run --html report-coverage.html --coverage-html --coverage-text
 events:
+    post-start:
+        - appserver: php /app/build/check-wsl.php
     pre-start:
         - appserver: composer install
