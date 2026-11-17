@@ -56,7 +56,7 @@ class LocalStorage extends Storage implements StorageInterface
         $targetDir = $this->absPath($path);
         $directory = new LocalDirectory($targetDir, $ignoreCache, $this->thumbnailSize, $this->createCache());
         $files = $directory->getFiles();
-        $directoryUrl = $this->baseUrl . self::encodePath($path);
+        $directoryUrl = $this->baseUrl . Utils::encodeUrlPath($path);
         foreach ($files as $file) {
             $file->setDirectoryUrl($directoryUrl);
         }
@@ -207,16 +207,6 @@ class LocalStorage extends Storage implements StorageInterface
         if ($notOverwritten !== []) {
             throw new StorageException('files were not overwritten: ' . implode(',', $notOverwritten));
         }
-    }
-
-    /** result is either empty or ends with a slash */
-    private static function encodePath(string $path): string
-    {
-        $path = trim($path, '/');
-        if ($path === '') {
-            return '';
-        }
-        return implode('/', array_map(rawurlencode(...), explode('/', $path))) . '/';
     }
 
     /** @return iterable<FolderInterface> */

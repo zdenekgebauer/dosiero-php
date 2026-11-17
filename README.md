@@ -313,6 +313,7 @@ options are passed as a comma-separated string. An unknown name throws.
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `BASE_DIR` (`LocalStorage`) | — | Directory holding the files. Required; throws when it is not a directory. |
+| `BASE_DIR` (`FtpStorage`) | `/` | Directory on the ftp server; see [FTP storage](#ftp-storage) for the other ftp options. |
 | `BASE_URL` | `''` | Public url the same files are served from, used to build the url in the response. |
 | `ALLOWED_EXTENSIONS` | images, documents, archives, media — **not** `svg` | What an upload may be called. See [Upload types](#upload-types). |
 | `MAX_FILE_SIZE` | `5242880` (5 MB) | Per file, in bytes. `0` leaves only the php.ini ceiling. |
@@ -323,7 +324,7 @@ options are passed as a comma-separated string. An unknown name throws.
 | `MODE_FILE` | `0o644` | Permissions for a stored file. |
 | `THUMBNAIL_SIZE` | `50` | Longer side of the generated thumbnail, in pixels. Minimum 10. |
 | `CACHE_ENABLED` | `true` | See [Listing cache](#listing-cache). |
-| `CACHE_DIRECTORY` | `''` | Empty keeps `.htdircache` next to the data. |
+| `CACHE_DIRECTORY` | `''` | Empty keeps `.htdircache` next to the data; an ftp storage then caches nothing. |
 
 ### What the connector will not do
 
@@ -406,6 +407,59 @@ For a public deployment, answer unforeseen errors with a generic message and a c
 id, and log the detail on the server. The catch-all in the example above passes
 `getMessage()` to the client, which is convenient in development and can leak paths in
 production.
+
+## FTP storage
+
+`Dosiero\Ftp\FtpStorage` keeps the files on an FTP or FTPS server and behaves like the local
+storage in everything the client sees: the same operations, the same refusals, the same
+messages. It needs the `ftp` extension, which the package only suggests - an installation
+without it keeps working and only an ftp storage fails, with a `StorageException`.
+
+```php
+use Dosiero\Ftp\FtpStorage;
+
+$ftpStorage = new FtpStorage('FTP');
+$ftpStorage->setOption(FtpStorage::OPTION_HOST, 'ftp.example.org');
+$ftpStorage->setOption(FtpStorage::OPTION_LOGIN, 'user');
+$ftpStorage->setOption(FtpStorage::OPTION_PASSWORD, 'secret');
+$ftpStorage->setOption(FtpStorage::OPTION_SSL, true);
+$ftpStorage->setOption(FtpStorage::OPTION_BASE_DIR, '/public_html/files');
+$ftpStorage->setOption(FtpStorage::OPTION_BASE_URL, 'https://example.org/files');
+$ftpStorage->setOption(FtpStorage::OPTION_CACHE_DIRECTORY, '/var/cache/dosiero');
+
+$connector->addStorage($ftpStorage);
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `BASE_DIR` | `/` | Directory on the server holding the files. `..` and `.` segments throw. |
+| `HOST` | `''` | Server name or address. Required; the first operation fails without it. |
+| `LOGIN` | `anonymous` | |
+| `PASSIVE` | `true` | Passive mode, which is what works behind NAT and most firewalls. |
+| `PASSWORD` | `''` | Never part of an error message. |
+| `PORT` | `21` | |
+| `SSL` | `false` | Explicit FTPS. PHP does not verify the server certificate. |
+| `TIMEOUT` | `90` | Seconds, at least 1. |
+
+All shared options apply. Things that differ from the local storage:
+
+- **Set `CACHE_DIRECTORY`.** Without it an ftp storage caches nothing, because there is no
+  local directory to keep `.htdircache` next to. Every listing then downloads every image
+  in the folder again to build its thumbnails. A cached listing is refreshed after each
+  change made through the connector, and thumbnails of unchanged images are reused.
+- **Changes made by another ftp client** show up after *reload* in the client, or when the
+  cached listing expires after two hours.
+- **The folder tree costs one round-trip per folder**, because the server is asked for each
+  directory in turn. A deep tree on a slow server makes the first request noticeably slow.
+- **No connection is opened until a request needs one**, and one request uses one
+  connection however many operations it performs.
+- **Thumbnails are made only for images within `MAX_FILE_SIZE`**, because each has to be
+  downloaded first.
+- **Paths are confined by text, not by the server.** There is no `realpath()` over ftp, so
+  any path with a `..` or `.` segment is refused, and links are never listed, followed or
+  operated on.
+- Copy runs through the connector (the file is downloaded and uploaded again); move is a
+  rename on the server and does not transfer data.
 
 ## Upload size
 
@@ -508,6 +562,11 @@ lando coverage                      # xdebug on for this one command
 lando dependency-analyser           # composer.json against usage in src/
 lando infection                     # mutation testing, report in build/reports/
 ```
+
+The FTP tests talk to a real ProFTPD on `127.0.0.1:2121`, which Lando installs and starts
+through `build/ftp-daemon.sh`; its root is `tests/Support/Data/ftp` and its log
+`/tmp/dosiero-ftpd/proftpd.log`. CI runs the same script. `DOSIERO_FTP_HOST`, `_PORT`,
+`_LOGIN` and `_PASSWORD` point the tests at another server.
 
 The `Api` suite drives the connector over real HTTP, which is the only place the CORS and
 preflight headers actually exist. It runs against `tests/Support/Endpoint/index.php`, a

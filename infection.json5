@@ -9,6 +9,9 @@
     // the Api suite runs the connector over http, outside the process Infection mutates
     "testFrameworkOptions": "Unit,Integration",
     "tmpDir": "build/cache/infection",
+    // a mutant of a shared option runs the ftp tests too; the 10 s default cut those runs short and
+    // counted mutants as killed that no test actually detected
+    "timeout": 60,
     "logs": {
         "text": "build/reports/infection.txt",
         "html": "build/reports/infection.html",
@@ -24,10 +27,20 @@
         "global-ignore": [
             "Dosiero\\Response::sendHeaders"
         ],
+        "CastInt": {
+            "ignoreSourceCodeByRegex": [
+                // only reached for an existing file, for which filesize() always returns an int
+                ".*\\(int\\)filesize\\(\\$tmpName\\).*"
+            ]
+        },
         "DecrementInteger": {
+            "ignoreSourceCodeByRegex": [
+                // getMaxFileSize() drops every limit that is not positive, -1 as well as 0
+                ".*max\\(0, \\(int\\)\\$value\\).*"
+            ],
             "ignore": [
                 // the mask never has its lowest bit set, so 0xFF and 254 cut the same bits
-                "Dosiero\\Utils::ipMatchesRange::72"
+                "Dosiero\\Utils::ipMatchesRange::82"
             ]
         },
         "FalseValue": {
@@ -54,6 +67,11 @@
             "ignore": [
                 "Dosiero\\Response::sendOutput",
                 "Dosiero\\Response::sendPreflight"
+            ],
+            "ignoreSourceCodeByRegex": [
+                // the sweep runs on 1 save in 50 by random_int(), so no test can rely on it running;
+                // cleanExpired() itself is tested directly
+                ".*\\$this->cleanExpired\\(\\);.*"
             ]
         },
         "ReturnRemoval": {
@@ -61,7 +79,7 @@
                 // imagecreatefromstring('') returns false, which ends in the same empty string
                 "Dosiero\\Thumbnail::createThumbnailFromString::31",
                 // isValidFileName() refuses "", "." and ".." on its own
-                "Dosiero\\Utils::isValidFolderName::104"
+                "Dosiero\\Utils::isValidFolderName::114"
             ]
         }
     }

@@ -41,6 +41,16 @@ class Utils
         'LPT9',
     ];
 
+    /** @return string empty, or the url-encoded segments ending with a slash */
+    public static function encodeUrlPath(string $path): string
+    {
+        $path = trim($path, '/');
+        if ($path === '') {
+            return '';
+        }
+        return implode('/', array_map(rawurlencode(...), explode('/', $path))) . '/';
+    }
+
     /** @return int bytes, 0 when the directive is empty or unparseable */
     public static function iniBytes(string $directive): int
     {

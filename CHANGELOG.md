@@ -6,6 +6,18 @@ Notable changes per release. Versioning follows [semver](https://semver.org/).
 
 ### Added
 
+- **FTP storage `Dosiero\Ftp\FtpStorage`**, taken over from the separate `DosieroFtp` package
+  and rewritten against the current core. It has the same operations, refusals and messages as the
+  local storage. Paths are confined by text because there is no `realpath()` over ftp, links are
+  never followed, and uploads pass `assertAllowedUpload()`. It works over plain FTP or explicit
+  FTPS, in passive mode by default, and opens one connection per request only when needed.
+  Listings are cached only with `CACHE_DIRECTORY` and refreshed after each change. `ext-ftp` is
+  suggested, not required. See *FTP storage* in the README.
+
+  Migrating from `DosieroFtp`: the class is `Dosiero\Ftp\FtpStorage`, `OPTION_BASE_PATH` is
+  `OPTION_BASE_DIR`, the `zdenekgebauer/dosiero-ftp` and `zdenekgebauer/ftp-client` requirements
+  go away, and the old cache directory can be emptied because the key format changed.
+- **`Utils::encodeUrlPath()`**, the per-segment url encoding both storages use for directory urls.
 - **`Response::getHeaders()` and `Response::getPreflightHeaders()`** list the headers
   `sendOutput()` and `sendPreflight()` send, so a framework controller can pass the CORS headers on
   as well as the status and the payload.

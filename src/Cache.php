@@ -19,12 +19,20 @@ class Cache
 
     private readonly string $cacheDirectory;
 
+    private readonly bool $enabled;
+
+    /**
+     * @param bool $remote the directories are not local paths: no file next to them, no mtime of
+     *                     theirs to trust - a local directory of the same name would be unrelated
+     */
     public function __construct(
-        private readonly bool $enabled = true,
+        bool $enabled = true,
         string $cacheDirectory = '',
         private readonly string $namespace = '',
+        private readonly bool $remote = false,
     ) {
         $this->cacheDirectory = $cacheDirectory === '' ? '' : rtrim($cacheDirectory, '/') . '/';
+        $this->enabled = $enabled && !($remote && $this->cacheDirectory === '');
     }
 
     /** A file next to the data dies with it, so only an external directory needs sweeping. */
@@ -68,7 +76,7 @@ class Cache
         if (!is_array($cache) || !is_array($cache['files'] ?? null)) {
             return null;
         }
-        if (($cache['mtime'] ?? null) !== self::directoryMtime($directory)) {
+        if (($cache['mtime'] ?? null) !== $this->directoryMtime($directory)) {
             return null;
         }
 
@@ -106,10 +114,10 @@ class Cache
         }
         ksort($serialized);
 
-        $mtime = self::directoryMtime($directory);
+        $mtime = $this->directoryMtime($directory);
         file_put_contents($cacheFile, self::encode($mtime, $serialized));
 
-        $mtimeAfter = self::directoryMtime($directory);
+        $mtimeAfter = $this->directoryMtime($directory);
         if ($mtimeAfter !== $mtime) {
             file_put_contents($cacheFile, self::encode($mtimeAfter, $serialized));
         }
@@ -127,8 +135,11 @@ class Cache
         return $this->cacheDirectory . sha1($this->namespace . "\0" . rtrim($directory, '/')) . '.json';
     }
 
-    private static function directoryMtime(string $directory): ?int
+    private function directoryMtime(string $directory): ?int
     {
+        if ($this->remote) {
+            return null;
+        }
         clearstatcache(true, $directory);
         if (!is_dir($directory)) {
             return null;

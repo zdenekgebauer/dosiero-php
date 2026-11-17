@@ -7,14 +7,18 @@ Thumbs.db
 
 /.idea/
 /.lando.local.yml
+/build/*.sh
 /build/cache/
 /build/reports/
 /composer.lock
 /data/
 /index.php
+/openspec/
 /tests/*.suite.yml
 /tests/_envs/local.yml
 /tests/_output/*
+/tests/Support/Data/ftp/
+/tests/Support/Data/ftp-cache/
 /tests/Support/Data/local/
 /tests/Support/_generated/*
 /vendor/

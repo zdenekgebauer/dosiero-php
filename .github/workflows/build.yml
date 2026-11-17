@@ -21,8 +21,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: fileinfo, gd, iconv, json
+          extensions: fileinfo, ftp, gd, iconv, json
           coverage: none
+
+      # the FtpStorage tests talk to a real daemon on 127.0.0.1:2121, the same one Lando runs
+      - name: Start FTP daemon
+        run: |
+          sudo build/ftp-daemon.sh install
+          sudo build/ftp-daemon.sh start
 
       - name: Validate composer.json
         run: composer validate --no-check-lock

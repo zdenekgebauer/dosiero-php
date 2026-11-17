@@ -12,6 +12,16 @@ class RequestTest extends Unit
 {
     protected UnitTester $tester;
 
+    public function testNamesAreTrimmed(): void
+    {
+        $_POST = ['new' => ' new.txt ', 'old' => ' old.txt ', 'folder' => ' docs '];
+        $request = new Request();
+
+        $this->tester->assertSame('new.txt', $request->getNewFile());
+        $this->tester->assertSame('old.txt', $request->getOldFile());
+        $this->tester->assertSame('docs', $request->getNewFolder());
+    }
+
     public function testNonScalarParametersBecomeEmptyStrings(): void
     {
         $_GET = ['action' => ['files'], 'storage' => ['local'], 'path' => ['sub']];

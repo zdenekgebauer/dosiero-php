@@ -13,6 +13,15 @@ class StorageTest extends Unit
 {
     protected UnitTester $tester;
 
+    public function testAllowedExtensionsAreParsedFromAList(): void
+    {
+        $storage = new class('base') extends Storage {};
+
+        $storage->setOption(Storage::OPTION_ALLOWED_EXTENSIONS, ' JPG, ,png ,');
+
+        $this->tester->assertSame(['jpg', 'png'], $storage->getAllowedExtensions());
+    }
+
     public function testCacheDirectoryHasToExist(): void
     {
         $storage = new class('base') extends Storage {};
@@ -26,6 +35,17 @@ class StorageTest extends Unit
                 $storage->setOption(Storage::OPTION_CACHE_DIRECTORY, '/no/such/directory');
             },
         );
+    }
+
+    public function testFlagsAcceptIntegers(): void
+    {
+        $storage = new class('base') extends Storage {};
+
+        $storage->setOption(Storage::OPTION_CACHE_ENABLED, 0);
+        $storage->setOption(Storage::OPTION_NORMALIZE_NAMES, 0);
+        $storage->setOption(Storage::OPTION_READ_ONLY, 1);
+
+        $this->tester->assertTrue($storage->isReadOnly());
     }
 
     public function testMaxFileSizeDefaultsToFiveMegabytes(): void

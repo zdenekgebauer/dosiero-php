@@ -15,7 +15,13 @@ services:
             environment:
                 XDEBUG_MODE: 'off'
         build_as_root:
-            - docker-php-ext-install sockets
+            - /app/build/ftp-daemon.sh install
+            # without openssl the extension lacks ftp_ssl_connect()
+            - apt-get install -y -qq libssl-dev
+            - docker-php-ext-configure ftp --with-ftp-ssl
+            - docker-php-ext-install ftp sockets
+        run_as_root:
+            - /app/build/ftp-daemon.sh start
 proxy:
     appserver:
         - dosiero-php.local

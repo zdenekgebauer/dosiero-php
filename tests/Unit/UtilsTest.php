@@ -98,6 +98,26 @@ class UtilsTest extends Unit
         ];
     }
 
+    /** @return array<string, array{string, string}> */
+    public function provideUrlPaths(): array
+    {
+        return [
+            'empty' => ['', ''],
+            'root' => ['/', ''],
+            'single' => ['a', 'a/'],
+            'nested with slashes around' => ['/a/b/', 'a/b/'],
+            'spaces' => ['my photos', 'my%20photos/'],
+            'unicode' => ['fotky/léto', 'fotky/l%C3%A9to/'],
+            'reserved characters stay inside the segment' => ['a#b?c', 'a%23b%3Fc/'],
+        ];
+    }
+
+    /** @dataProvider provideUrlPaths */
+    public function testEncodeUrlPath(string $path, string $expected): void
+    {
+        $this->tester->assertSame($expected, Utils::encodeUrlPath($path));
+    }
+
     /** @dataProvider provideIpRanges */
     public function testIpMatchesRange(string $address, string $range, bool $expected): void
     {

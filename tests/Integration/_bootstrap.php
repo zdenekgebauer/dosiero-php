@@ -4,3 +4,4 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/LocalStorageBase.php';
+require_once __DIR__ . '/FtpStorageBase.php';

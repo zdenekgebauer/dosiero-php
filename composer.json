@@ -16,6 +16,9 @@
     "ext-iconv": "*",
     "ext-json": "*"
   },
+  "suggest": {
+    "ext-ftp": "required by Dosiero\\Ftp\\FtpStorage"
+  },
   "autoload": {
     "psr-4": {
       "Dosiero\\": "src/"
@@ -24,7 +27,7 @@
   "require-dev": {
     "codeception/codeception": "^5.3",
     "codeception/module-asserts": "^3.3",
-    "codeception/module-phpbrowser": "^3.0",
+    "codeception/module-phpbrowser": "^4.1",
     "codeception/module-rest": "^3.4",
     "infection/codeception-adapter": "^0.4",
     "infection/infection": "^0.35",

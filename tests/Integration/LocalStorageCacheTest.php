@@ -13,6 +13,8 @@ class LocalStorageCacheTest extends LocalStorageBase
 {
     private string $cacheDirectory;
 
+    private string $workingDirectory;
+
     public function testCacheDirectoryKeepsDataDirectoryClean(): void
     {
         file_put_contents($this->testDirectory . '/file.txt', '');
@@ -163,6 +165,7 @@ class LocalStorageCacheTest extends LocalStorageBase
 
     protected function _after()
     {
+        chdir($this->workingDirectory);
         $this->tester->emptyDirRecursive($this->cacheDirectory);
         parent::_after();
     }
@@ -175,6 +178,9 @@ class LocalStorageCacheTest extends LocalStorageBase
             mkdir($this->cacheDirectory, 0o777, true);
         }
         $this->tester->emptyDirRecursive($this->cacheDirectory);
+        // a cache that lost its directory writes relative to the cwd, which is then this one
+        $this->workingDirectory = (string)getcwd();
+        chdir($this->cacheDirectory);
     }
 
     /** @param array<string, bool|int|string> $options */
