@@ -8,6 +8,7 @@ Thumbs.db
 /.idea/
 /.lando.local.yml
 /build/*.sh
+!/build/ftp-daemon.sh
 /build/cache/
 /build/reports/
 /composer.lock
