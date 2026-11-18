@@ -64,6 +64,7 @@ class Thumbnail
         }
         $imgThumb = imagecreatetruecolor($thumbWidth, $thumbHeight);
 
+        $transparentColor = null;
         if ($ext === 'gif') {
             $transparentIndex = imagecolortransparent($imgOrig);
             if ($transparentIndex >= 0) {
@@ -102,6 +103,22 @@ class Thumbnail
             $origWidth,
             $origHeight,
         );
+
+        /* a gif is a palette image: left to imagegif(), the conversion from truecolor keeps or drops
+           the transparent colour depending on the libgd build (Ubuntu 26.04 drops it), so it is
+           done here and the transparent index set on the result */
+        if ($transparentColor !== null) {
+            imagetruecolortopalette($imgThumb, false, 256);
+            $index = imagecolorexact(
+                $imgThumb,
+                $transparentColor['red'],
+                $transparentColor['green'],
+                $transparentColor['blue'],
+            );
+            if ($index >= 0) {
+                imagecolortransparent($imgThumb, $index);
+            }
+        }
 
         $imageData = self::imageToData($imgThumb, $ext);
         $mimes = [

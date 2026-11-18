@@ -75,6 +75,9 @@ ListOptions "-a"
 <IfModule mod_cap.c>
     CapabilitiesEngine off
 </IfModule>
+<IfModule mod_ctrls.c>
+    ControlsEngine off
+</IfModule>
 <IfModule mod_tls.c>
     TLSEngine on
     TLSRequired off

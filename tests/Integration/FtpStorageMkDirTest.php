@@ -54,6 +54,16 @@ class FtpStorageMkDirTest extends FtpStorageBase
         );
     }
 
+    public function testMissingParent(): void
+    {
+        $storage = $this->createStorage();
+
+        $this->tester->expectThrowable(
+            new StorageException('not found path "missing"'),
+            static fn() => $storage->mkDir('missing', 'docs'),
+        );
+    }
+
     public function testNewFolder(): void
     {
         mkdir($this->ftpDirectory . '/a');
@@ -78,7 +88,7 @@ class FtpStorageMkDirTest extends FtpStorageBase
                 return new class('127.0.0.1', 2121, 'dosiero', 'dosiero', false, true, 10) extends FtpConnection {
                     public function list(string $directory): ?array
                     {
-                        return null;
+                        return [];
                     }
 
                     public function mkdir(string $path): bool

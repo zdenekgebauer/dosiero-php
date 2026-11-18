@@ -146,7 +146,7 @@ class FtpConnectionTest extends FtpStorageBase
         $connection = $this->createConnection();
 
         $this->tester->assertTrue($connection->mkdir('/sub'));
-        $this->tester->assertFalse($connection->mkdir('/sub'));
+        $this->tester->assertFalse($connection->mkdir('/missing/sub'));
         $this->tester->assertTrue($connection->put('/sub/a.txt', $local));
         $this->tester->assertFalse($connection->put('/missing/a.txt', $local));
         $this->tester->assertTrue($connection->download('/sub/a.txt', $this->cacheDirectory . '/downloaded.txt'));

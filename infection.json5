@@ -25,7 +25,12 @@
         "@default": true,
         // header() records nothing under the cli sapi, the tests assert on getHeaders() instead
         "global-ignore": [
-            "Dosiero\\Response::sendHeaders"
+            "Dosiero\\Response::sendHeaders",
+            // the gif palette conversion only shows on a libgd that drops the transparent colour
+            // itself (Ubuntu 26.04, the CI runner), where ThumbnailTest catches it; the bundled GD
+            // in Lando keeps the colour either way
+            "Dosiero\\Thumbnail::createThumbnailFromString::111",
+            "Dosiero\\Thumbnail::createThumbnailFromString::118"
         ],
         "CastInt": {
             "ignoreSourceCodeByRegex": [
@@ -46,7 +51,7 @@
         "FalseValue": {
             "ignore": [
                 // what getimagesize() cannot read, imagecreatefromstring() cannot decode either
-                "Dosiero\\Thumbnail::isWithinPixelLimit::133"
+                "Dosiero\\Thumbnail::isWithinPixelLimit::150"
             ]
         },
         "GreaterThan": {

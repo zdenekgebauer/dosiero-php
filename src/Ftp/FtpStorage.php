@@ -137,11 +137,14 @@ class FtpStorage extends Storage implements StorageInterface
     public function mkDir(string $path, string $newFolder): void
     {
         $directory = $this->remotePath($path);
+        // decided from the listing: ProFTPD 1.3.9 answers 257 to MKD of an existing directory, and
+        // of an existing file too, without creating anything
+        $existing = $this->listOrFail($directory, $path)[$newFolder] ?? null;
+        if ($existing?->isDir() === true) {
+            return;
+        }
         $target = self::child($directory, $newFolder);
-        if (!$this->ftp()->mkdir($target)) {
-            if ($this->ftp()->list($target) !== null) {
-                return;
-            }
+        if ($existing !== null || !$this->ftp()->mkdir($target)) {
             throw new StorageException('cannot create folder "' . $newFolder . '"');
         }
         $this->ftp()->chmod($target, $this->modeDir);
