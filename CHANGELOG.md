@@ -2,7 +2,10 @@
 
 Notable changes per release. Versioning follows [semver](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0] — 2026-11-18
+
+FTP joins the local disk as a second storage, in the core rather than as a separate package.
+Nothing an existing installation relies on changes; `ext-ftp` is needed only by those who use it.
 
 ### Added
 
@@ -27,6 +30,19 @@ Notable changes per release. Versioning follows [semver](https://semver.org/).
 - **The session check no longer needs `ext-session`.** It called `session_status()` without the
   extension being declared, so an installation lacking it ended every request in a fatal error once
   `requireSession()` was configured. The call was redundant and is gone.
+- **GIF thumbnails keep their transparent colour on every GD build.** The system libgd of current
+  distributions (Ubuntu 26.04) drops the transparent colour when `imagegif()` converts a truecolor
+  image, so a transparent GIF got an opaque background; PHP's bundled GD kept it, which hid the
+  difference. `Thumbnail` now converts to a palette itself and marks the colour by index.
+
+### Development
+
+- **Mutation testing with Infection at 100 % MSI** (`lando infection`). An escaped mutant is killed
+  with a test; only an equivalent one goes to the ignore list in `infection.json5`, with the reason.
+- **`composer-dependency-analyser` runs in CI** and checks `composer.json` against what `src/`
+  uses, PHP extensions included.
+- **The FTP tests run against a real ProFTPD**, started by `build/ftp-daemon.sh` in Lando and in
+  CI alike, plain and over TLS.
 
 ## [1.0.0] — 2026-09-13
 
